@@ -79,6 +79,11 @@ CAP_PIF = 0.55           # PIF review threshold
 LIAB_ADOPTION_NB = 0.35  # 35% of NB have BI+UM bundle (manager verifies)
 LIAB_ADOPTION_REN = 0.30 # 30% of REN have BI+UM bundle (already in book)
 
+# NEW: Minimum-requirement thresholds (monthly, by written premium)
+NB_MIN_PREMIUM = 50000   # Must write at least $50,000 NB premium in the month to earn the NB bonus
+REN_MIN_PREMIUM = 50000  # Must keep at least $50,000 REN premium in the month to earn the REN bonus
+# RWR bonus is paid ONLY if BOTH NB and REN minimums are met. RWR has no own threshold.
+
 # ============================================================================
 # BONUS ENGINES
 # ============================================================================
@@ -89,6 +94,30 @@ def kicker(collected_pct):
     if collected_pct >= 0.25: return 1.15  # 25-49%
     if collected_pct >= 0.15: return 1.10  # 15-24%
     return 1.00                              # below 15%, no kicker
+
+
+def apply_minimums(nb_premium, ren_premium, nb_target, ren_target, rwr_target,
+                   nb_min=NB_MIN_PREMIUM, ren_min=REN_MIN_PREMIUM):
+    """Gate the bonus lines by the minimum-premium thresholds.
+
+    Rules (per the agent's request):
+      - NB line pays only if NB premium >= NB_MIN_PREMIUM that month.
+      - REN line pays only if REN premium >= REN_MIN_PREMIUM that month.
+      - RWR line pays only if BOTH NB and REN minimums are met.
+    """
+    nb_qual = nb_premium >= nb_min
+    ren_qual = ren_premium >= ren_min
+    rwr_qual = nb_qual and ren_qual
+    paid_nb = nb_target if nb_qual else 0.0
+    paid_ren = ren_target if ren_qual else 0.0
+    paid_rwr = rwr_target if rwr_qual else 0.0
+    return {
+        'nb_qual': nb_qual, 'ren_qual': ren_qual, 'rwr_qual': rwr_qual,
+        'paid_nb_after_min': paid_nb,
+        'paid_ren_after_min': paid_ren,
+        'paid_rwr_after_min': paid_rwr,
+        'paid_after_min': paid_nb + paid_ren + paid_rwr,
+    }
 
 
 def kicker_label(collected_pct):
@@ -149,6 +178,8 @@ def calc_proposal_a(nb, rwr, ren):
     bonus_pct_of_safe_net = paid / safe_net if safe_net else 0
     review_flag = (paid > cap)  # Soft flag: ownership reviews months that exceed 40% safe net
 
+    mins = apply_minimums(nb_p, ren_p, nb_target, ren_target, rwr_target)
+
     return {
         'avg_nb': avg_nb, 'avg_ren': avg_ren,
         'nb_per': nb_per, 'nb_tier_label': nb_tier_label,
@@ -159,6 +190,7 @@ def calc_proposal_a(nb, rwr, ren):
         'gross_comm': gross_comm, 'safe_net': safe_net, 'cap': cap,
         'paid': paid, 'capped_paid': capped_paid,
         'bonus_pct_of_safe_net': bonus_pct_of_safe_net, 'review_flag': review_flag,
+        **mins,
     }
 
 
@@ -199,6 +231,8 @@ def calc_proposal_b(nb, rwr, ren):
     bonus_pct_of_safe_net = paid / safe_net if safe_net else 0
     review_flag = (paid > cap)
 
+    mins = apply_minimums(nb_p, ren_p, nb_target, ren_target, rwr_target)
+
     return {
         'nb_base': nb_base, 'nb_liability': nb_liability, 'nb_target': nb_target,
         'ren_base': ren_base, 'ren_liability': ren_liability, 'ren_target': ren_target,
@@ -207,6 +241,7 @@ def calc_proposal_b(nb, rwr, ren):
         'gross_comm': gross_comm, 'safe_net': safe_net, 'cap': cap,
         'paid': paid, 'capped_paid': capped_paid,
         'bonus_pct_of_safe_net': bonus_pct_of_safe_net, 'review_flag': review_flag,
+        **mins,
     }
 
 
@@ -240,6 +275,8 @@ def calc_proposal_c(nb, rwr, ren):
     bonus_pct_of_safe_net = paid / safe_net if safe_net else 0
     review_flag = (paid > cap)
 
+    mins = apply_minimums(nb_p, ren_p, nb_target, ren_target, rwr_target)
+
     return {
         'nb_target': nb_target, 'ren_target': ren_target, 'rwr_target': rwr_target,
         'total_target': total_target,
@@ -247,6 +284,7 @@ def calc_proposal_c(nb, rwr, ren):
         'gross_comm': gross_comm, 'safe_net': safe_net, 'cap': cap,
         'paid': paid, 'capped_paid': capped_paid,
         'bonus_pct_of_safe_net': bonus_pct_of_safe_net, 'review_flag': review_flag,
+        **mins,
     }
 
 
@@ -375,23 +413,28 @@ def build_readme(wb):
         ('Profitability Protection (ALL proposals)', 'Bonus PAID = the calculated TARGET (no automatic hard cap). Safe net = collected commission x (1 - 0.175 royalty) x (1 - 0.40 overhead). Ownership REVIEWS any month where target exceeds 40% of safe net (soft flag). Current plan pays ~57% of safe net - all three proposals are cheaper than that.'),
         ('Chargeback (ALL proposals)', '100% of the paid bonus is reversed if the policy cancels or rewrites within 90 days of effective date. THIS is the primary profit protection.'),
         ('', ''),
+        ('Minimum Requirement (NEW)', f'Bonus is GATED by monthly premium: NB premium >= ${NB_MIN_PREMIUM:,} AND REN premium >= ${REN_MIN_PREMIUM:,}. Pass the NB gate to earn NB bonus. Pass the REN gate to earn REN bonus. Pass BOTH to earn the RWR bonus (RWR has no own minimum). This replaces today\'s 35-policy NB+RWR floor and points agents at the renewal book.'),
+        ('', ''),
         ('Sheet Map', ''),
-        ('  1. Executive Summary', 'Bottom-line comparison: Current vs A vs B vs C for all 6 agents across 4 months. Real + 50% swap.'),
-        ('  2. Rules Side by Side', 'One-row-per-rule comparison of all four plans.'),
-        ('  3. Proposal A Rules', 'Full payout tables for the PREMIUM-based plan.'),
-        ('  4. Proposal B Rules', 'Full payout tables for the COVERAGE-based plan.'),
-        ('  5. Proposal C Rules', 'Bonus idea: persistency-focused flat plan.'),
-        ('  6. Worked Examples', 'Hand-built single-policy walk-throughs for every plan.'),
-        ('  7. Agent Examples - Real', 'Month-by-month bonus for the 6 agents on actual Jan-Apr 2026 data, both proposals.'),
-        ('  8. Agent Examples - 50% Swap', 'Same 6 agents, 50% of RWR moved to REN. Shows future-state earnings.'),
-        ('  9. Real vs Swap Comparison', 'Side-by-side 4-month total delta showing the renewal-shift upside per agent.'),
-        ('  10. Coverage Bundle Logic', 'Why BI+UM is bundled and why BI alone does not qualify.'),
-        ('  11. Collected Kicker Logic', 'How the collected % multiplier works.'),
-        ('  12. Profitability Cap', 'How the safe-net review threshold protects ownership.'),
-        ('  13. Chargeback Process', '90-day cancellation/rewrite reversal procedure.'),
-        ('  14. Agent Quick Reference', 'One-page printable for the agent floor.'),
-        ('  15. Manual Tracker Template', 'Monthly template for verified bonus tracking.'),
-        ('  16. Assumptions', 'All economic and modeling assumptions in one place.'),
+        ('  1. Executive Summary', 'Bottom-line comparison: Current vs A vs B vs C for all 6 agents across 4 months. Real + 50% swap. Now shows both no-min and with-min totals.'),
+        ('  2. Safe Net Explained', 'PLAIN-LANGUAGE walk-through of what safe net is, with single-policy and full-month worked numbers.'),
+        ('  3. Minimum Requirements', 'How the $50k/$50k gate works, pass/fail per agent-month, plus $25k/$35k/$75k sensitivity.'),
+        ('  4. Previous vs New Detailed', 'Agent-by-agent dollar comparison: today vs no-min vs with-min, by month.'),
+        ('  5. Rules Side by Side', 'One-row-per-rule comparison of all four plans.'),
+        ('  6. Proposal A Rules', 'Full payout tables for the PREMIUM-based plan.'),
+        ('  7. Proposal B Rules', 'Full payout tables for the COVERAGE-based plan.'),
+        ('  8. Proposal C Rules', 'Bonus idea: persistency-focused flat plan.'),
+        ('  9. Worked Examples', 'Hand-built single-policy walk-throughs for every plan.'),
+        ('  10. Agent Examples - Real', 'Month-by-month bonus for the 6 agents on actual Jan-Apr 2026 data, both proposals.'),
+        ('  11. Agent Examples - 50% Swap', 'Same 6 agents, 50% of RWR moved to REN. Shows future-state earnings.'),
+        ('  12. Real vs Swap Comparison', 'Side-by-side 4-month total delta showing the renewal-shift upside per agent.'),
+        ('  13. Coverage Bundle Logic', 'Why BI+UM is bundled and why BI alone does not qualify.'),
+        ('  14. Collected Kicker Logic', 'How the collected % multiplier works.'),
+        ('  15. Profitability Cap', 'How the safe-net review threshold protects ownership.'),
+        ('  16. Chargeback Process', '90-day cancellation/rewrite reversal procedure.'),
+        ('  17. Agent Quick Reference', 'One-page printable for the agent floor.'),
+        ('  18. Manual Tracker Template', 'Monthly template for verified bonus tracking.'),
+        ('  19. Assumptions', 'All economic and modeling assumptions in one place.'),
     ]
     for r, (a, b) in enumerate(rows, 2):
         ws.cell(row=r, column=1, value=a)
@@ -407,25 +450,28 @@ def build_executive_summary(wb):
     ws = wb.create_sheet('Executive Summary')
     ws['A1'] = 'Executive Summary - Current vs Proposal A vs Proposal B vs Proposal C'
     ws['A1'].font = TITLE_FONT
-    ws.merge_cells('A1:K1')
+    ws.merge_cells('A1:M1')
 
-    ws['A2'] = 'All numbers below are MONTHLY paid bonus (after collected kicker and after 15% safe-net cap). Six agents, four months.'
+    ws['A2'] = (f'Six agents, four months. Each proposal is shown two ways: WITHOUT minimums (pure target) and WITH '
+                f'the proposed minimums (NB premium >= ${NB_MIN_PREMIUM:,}/mo AND REN premium >= ${REN_MIN_PREMIUM:,}/mo; RWR paid only when BOTH gates pass).')
     ws['A2'].font = Font(italic=True, size=10, color='666666')
-    ws.merge_cells('A2:K2')
+    ws.merge_cells('A2:M2')
 
     # Two scenario blocks: REAL, then 50% SWAP
-    headers = ['Month', 'Agent', 'NB', 'RWR', 'REN', 'Current', 'Proposal A (Premium)', 'Proposal B (Coverage)', 'Proposal C (Persistency)', 'A vs Current', 'B vs Current']
+    headers = ['Month', 'Agent', 'NB', 'RWR', 'REN', 'Current',
+               'A no-min', 'A with min', 'B no-min', 'B with min', 'C no-min', 'C with min',
+               'A-min vs Current']
     r = 4
     ws.cell(row=r, column=1, value='SCENARIO 1: REAL DATA (Jan-Apr 2026)').font = SECTION_FONT
     ws.cell(row=r, column=1).fill = SECTION_FILL
-    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=11)
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=13)
     r += 1
     for i, h in enumerate(headers, 1):
         c = ws.cell(row=r, column=i, value=h)
         style_header(c)
     r += 1
 
-    real_totals = {'current': 0, 'a': 0, 'b': 0, 'c': 0}
+    real_totals = {'current': 0, 'a': 0, 'a_min': 0, 'b': 0, 'b_min': 0, 'c': 0, 'c_min': 0}
     for month in MONTHS:
         for agent in AGENT_NAMES:
             d = AGENTS[agent][month]
@@ -434,7 +480,11 @@ def build_executive_summary(wb):
             a = calc_proposal_a(d['NB'], d['RWR'], d['REN'])
             b = calc_proposal_b(d['NB'], d['RWR'], d['REN'])
             cp = calc_proposal_c(d['NB'], d['RWR'], d['REN'])
-            row_vals = [month, agent, nb_c, rwr_c, ren_c, cur, a['paid'], b['paid'], cp['paid'], a['paid']-cur, b['paid']-cur]
+            row_vals = [month, agent, nb_c, rwr_c, ren_c, cur,
+                        a['paid'], a['paid_after_min'],
+                        b['paid'], b['paid_after_min'],
+                        cp['paid'], cp['paid_after_min'],
+                        a['paid_after_min'] - cur]
             for i, v in enumerate(row_vals, 1):
                 c = ws.cell(row=r, column=i, value=v)
                 if i in (3,4,5):
@@ -443,22 +493,31 @@ def build_executive_summary(wb):
                     style_dollar(c)
                 else:
                     style_data(c)
+                if i == 7: c.fill = PROP_A_FILL
+                if i == 8: c.fill = PROP_A_FILL; c.font = Font(bold=True)
+                if i == 9: c.fill = PROP_B_FILL
+                if i == 10: c.fill = PROP_B_FILL; c.font = Font(bold=True)
+                if i == 11: c.fill = PROP_C_FILL
+                if i == 12: c.fill = PROP_C_FILL; c.font = Font(bold=True)
             real_totals['current'] += cur
             real_totals['a'] += a['paid']
+            real_totals['a_min'] += a['paid_after_min']
             real_totals['b'] += b['paid']
+            real_totals['b_min'] += b['paid_after_min']
             real_totals['c'] += cp['paid']
+            real_totals['c_min'] += cp['paid_after_min']
             r += 1
 
-    # Real total row
-    tot_row = r
     ws.cell(row=r, column=1, value='REAL 4-MONTH TOTAL (6 agents)').font = Font(bold=True)
     ws.cell(row=r, column=6, value=real_totals['current'])
     ws.cell(row=r, column=7, value=real_totals['a'])
-    ws.cell(row=r, column=8, value=real_totals['b'])
-    ws.cell(row=r, column=9, value=real_totals['c'])
-    ws.cell(row=r, column=10, value=real_totals['a'] - real_totals['current'])
-    ws.cell(row=r, column=11, value=real_totals['b'] - real_totals['current'])
-    for i in range(6, 12):
+    ws.cell(row=r, column=8, value=real_totals['a_min'])
+    ws.cell(row=r, column=9, value=real_totals['b'])
+    ws.cell(row=r, column=10, value=real_totals['b_min'])
+    ws.cell(row=r, column=11, value=real_totals['c'])
+    ws.cell(row=r, column=12, value=real_totals['c_min'])
+    ws.cell(row=r, column=13, value=real_totals['a_min'] - real_totals['current'])
+    for i in range(6, 14):
         c = ws.cell(row=r, column=i)
         style_dollar(c)
         c.font = Font(bold=True)
@@ -469,14 +528,14 @@ def build_executive_summary(wb):
     # SCENARIO 2: 50% SWAP
     ws.cell(row=r, column=1, value='SCENARIO 2: 50% OF RWR CONVERTED TO REN (future-state target)').font = SECTION_FONT
     ws.cell(row=r, column=1).fill = SECTION_FILL
-    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=11)
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=13)
     r += 1
     for i, h in enumerate(headers, 1):
         c = ws.cell(row=r, column=i, value=h)
         style_header(c)
     r += 1
 
-    swap_totals = {'current': 0, 'a': 0, 'b': 0, 'c': 0}
+    swap_totals = {'current': 0, 'a': 0, 'a_min': 0, 'b': 0, 'b_min': 0, 'c': 0, 'c_min': 0}
     for month in MONTHS:
         for agent in AGENT_NAMES:
             d = swap_rwr_to_ren(AGENTS[agent][month], 0.5)
@@ -485,7 +544,11 @@ def build_executive_summary(wb):
             a = calc_proposal_a(d['NB'], d['RWR'], d['REN'])
             b = calc_proposal_b(d['NB'], d['RWR'], d['REN'])
             cp = calc_proposal_c(d['NB'], d['RWR'], d['REN'])
-            row_vals = [month, agent, nb_c, rwr_c, ren_c, cur, a['paid'], b['paid'], cp['paid'], a['paid']-cur, b['paid']-cur]
+            row_vals = [month, agent, nb_c, rwr_c, ren_c, cur,
+                        a['paid'], a['paid_after_min'],
+                        b['paid'], b['paid_after_min'],
+                        cp['paid'], cp['paid_after_min'],
+                        a['paid_after_min'] - cur]
             for i, v in enumerate(row_vals, 1):
                 c = ws.cell(row=r, column=i, value=v)
                 if i in (3,4,5):
@@ -494,20 +557,31 @@ def build_executive_summary(wb):
                     style_dollar(c)
                 else:
                     style_data(c)
+                if i == 7: c.fill = PROP_A_FILL
+                if i == 8: c.fill = PROP_A_FILL; c.font = Font(bold=True)
+                if i == 9: c.fill = PROP_B_FILL
+                if i == 10: c.fill = PROP_B_FILL; c.font = Font(bold=True)
+                if i == 11: c.fill = PROP_C_FILL
+                if i == 12: c.fill = PROP_C_FILL; c.font = Font(bold=True)
             swap_totals['current'] += cur
             swap_totals['a'] += a['paid']
+            swap_totals['a_min'] += a['paid_after_min']
             swap_totals['b'] += b['paid']
+            swap_totals['b_min'] += b['paid_after_min']
             swap_totals['c'] += cp['paid']
+            swap_totals['c_min'] += cp['paid_after_min']
             r += 1
 
     ws.cell(row=r, column=1, value='SWAP 4-MONTH TOTAL (6 agents)').font = Font(bold=True)
     ws.cell(row=r, column=6, value=swap_totals['current'])
     ws.cell(row=r, column=7, value=swap_totals['a'])
-    ws.cell(row=r, column=8, value=swap_totals['b'])
-    ws.cell(row=r, column=9, value=swap_totals['c'])
-    ws.cell(row=r, column=10, value=swap_totals['a'] - swap_totals['current'])
-    ws.cell(row=r, column=11, value=swap_totals['b'] - swap_totals['current'])
-    for i in range(6, 12):
+    ws.cell(row=r, column=8, value=swap_totals['a_min'])
+    ws.cell(row=r, column=9, value=swap_totals['b'])
+    ws.cell(row=r, column=10, value=swap_totals['b_min'])
+    ws.cell(row=r, column=11, value=swap_totals['c'])
+    ws.cell(row=r, column=12, value=swap_totals['c_min'])
+    ws.cell(row=r, column=13, value=swap_totals['a_min'] - swap_totals['current'])
+    for i in range(6, 14):
         c = ws.cell(row=r, column=i)
         style_dollar(c)
         c.font = Font(bold=True)
@@ -518,25 +592,27 @@ def build_executive_summary(wb):
     # Final read
     ws.cell(row=r, column=1, value='OWNERSHIP READ').font = SECTION_FONT
     ws.cell(row=r, column=1).fill = SECTION_FILL
-    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=11)
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=13)
     r += 1
     reads = [
-        f"REAL TOTAL: Current pays ${real_totals['current']:,.0f}. Proposal A pays ${real_totals['a']:,.0f} ({(real_totals['a']/real_totals['current']-1)*100:+.1f}% vs current). Proposal B pays ${real_totals['b']:,.0f} ({(real_totals['b']/real_totals['current']-1)*100:+.1f}%). Proposal C pays ${real_totals['c']:,.0f} ({(real_totals['c']/real_totals['current']-1)*100:+.1f}%). All three are CHEAPER than today.",
-        f"SWAP TOTAL: Current drops to ${swap_totals['current']:,.0f} (-${real_totals['current']-swap_totals['current']:,.0f}). Proposal A grows to ${swap_totals['a']:,.0f} (+${swap_totals['a']-real_totals['a']:,.0f}). Proposal B grows to ${swap_totals['b']:,.0f} (+${swap_totals['b']-real_totals['b']:,.0f}). Proposal C grows to ${swap_totals['c']:,.0f} (+${swap_totals['c']-real_totals['c']:,.0f}).",
-        "WHY THE REAL NUMBERS LOOK LOW: agents barely have any renewals today because they are rewriting instead. The new plans pay for renewals but there are not many to pay for yet. The SWAP shows what they would earn once the behavior shifts.",
+        f"REAL TOTAL (no-min): Current ${real_totals['current']:,.0f} | A ${real_totals['a']:,.0f} | B ${real_totals['b']:,.0f} | C ${real_totals['c']:,.0f}. All three new plans are cheaper than the current ${real_totals['current']:,.0f}.",
+        f"REAL TOTAL (with ${NB_MIN_PREMIUM:,}/${REN_MIN_PREMIUM:,} mins): A ${real_totals['a_min']:,.0f} | B ${real_totals['b_min']:,.0f} | C ${real_totals['c_min']:,.0f}. The minimums hammer the REAL payout because no agent currently has $50k of REN premium in a single month - so NO REN bonus and NO RWR bonus is earned. NB bonus is only earned when NB premium clears $50k, which happens twice in the four months.",
+        f"SWAP TOTAL (no-min): Current drops to ${swap_totals['current']:,.0f} (-${real_totals['current']-swap_totals['current']:,.0f}). A ${swap_totals['a']:,.0f} | B ${swap_totals['b']:,.0f} | C ${swap_totals['c']:,.0f}. New plans GROW because renewals now pay.",
+        f"SWAP TOTAL (with mins): A ${swap_totals['a_min']:,.0f} | B ${swap_totals['b_min']:,.0f} | C ${swap_totals['c_min']:,.0f}. Even with the swap, only Dialinerys crosses both gates in some months. The $50k REN minimum is aspirational - it forces agents to build the renewal book to unlock the bonus.",
+        "WHY THE WITH-MIN NUMBERS ARE SO LOW: today's agents barely have renewals. The $50k REN gate is intentional - it tells the team 'no bonus until you have a renewal book.' If ownership wants softer activation, see the Minimum Requirements sheet for $25k and $35k variants.",
         "CURRENT BONUS GOES DOWN in the swap because RWR count drops, and the current plan only counts NB+RWR. That is the broken incentive we are fixing.",
-        "PROTECTION: Pay = calculated target. Review threshold flags months above 40% of safe net (Proposal B is flagged often - it is the more generous plan). 90-day chargeback reverses any bonus on a policy that cancels/rewrites - that is the real profit shield.",
-        "RECOMMENDATION: Proposal A is the simplest payroll math and lowest cost. Proposal B is the cleaner sales story (coverage = money) and most motivating. Proposal C is the most aggressive at killing the rewrite habit (REN = NB parity).",
+        "PROTECTION: Pay = calculated target. Review threshold flags months above 40% of safe net (informational). 90-day chargeback reverses any bonus on a policy that cancels/rewrites - that is the real profit shield. Minimums add a second layer: no premium volume, no bonus.",
+        "RECOMMENDATION: Proposal A or B with the $50k/$50k minimums starting in Q3, after 90 days of awareness so agents can build renewals. Proposal C only if the goal is simplest payroll.",
     ]
     for txt in reads:
         c = ws.cell(row=r, column=1, value=txt)
         c.font = Font(size=11)
         c.alignment = Alignment(wrap_text=True, vertical='top')
-        ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=11)
-        ws.row_dimensions[r].height = 38
+        ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=13)
+        ws.row_dimensions[r].height = 44
         r += 1
 
-    set_col_widths(ws, [12, 22, 7, 7, 7, 13, 16, 17, 18, 14, 14])
+    set_col_widths(ws, [12, 22, 7, 7, 7, 11, 11, 12, 11, 12, 11, 12, 14])
     ws.freeze_panes = 'C6'
 
 
@@ -820,46 +896,49 @@ def build_agent_examples(wb, swap=False):
         ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=18)
         r += 1
 
-        a_headers = ['Month', 'NB Tier', 'NB Per-Policy $', 'NB Target (w/ kicker)', 'REN Tier', 'REN Per-Policy $', 'REN Target (w/ kicker)', 'RWR Target (w/ kicker)', 'Total Target = PAID', 'Safe Net', 'Bonus % of Safe Net', 'Review Flag (>40%)', 'vs Current', 'Current Bonus', '', '', '', '']
+        a_headers = ['Month', 'NB Tier', 'NB Per-Policy $', 'NB Target (w/ kicker)', 'REN Tier', 'REN Per-Policy $', 'REN Target (w/ kicker)', 'RWR Target (w/ kicker)', 'Total Target (no min)', 'PAID after MIN', 'Gates (NB/REN/RWR)', 'Safe Net', 'Bonus % SN', 'vs Current', 'Current Bonus', '', '', '']
         for i, h in enumerate(a_headers, 1):
             if h:
                 style_header(ws.cell(row=r, column=i, value=h))
         r += 1
 
-        a_totals = {'paid': 0, 'cur': 0}
+        a_totals = {'paid': 0, 'paid_min': 0, 'cur': 0}
         for month in MONTHS:
             d = agent_data[month]
             a = calc_proposal_a(d['NB'], d['RWR'], d['REN'])
             cur = current_bonus(d['NB'][0], d['RWR'][0])
-            flag = 'REVIEW' if a['review_flag'] else 'OK'
+            gates = f"{'Y' if a['nb_qual'] else 'n'}/{'Y' if a['ren_qual'] else 'n'}/{'Y' if a['rwr_qual'] else 'n'}"
             vals = [month, a['nb_tier_label'], a['nb_per'], a['nb_target'],
                     a['ren_tier_label'], a['ren_per'], a['ren_target'],
-                    a['rwr_target'], a['paid'], a['safe_net'],
-                    a['bonus_pct_of_safe_net'], flag,
-                    a['paid'] - cur, cur]
+                    a['rwr_target'], a['paid'], a['paid_after_min'], gates,
+                    a['safe_net'], a['bonus_pct_of_safe_net'],
+                    a['paid_after_min'] - cur, cur]
             for i, v in enumerate(vals, 1):
                 c = ws.cell(row=r, column=i, value=v)
-                if i in (1, 2, 5, 12): style_data(c)
-                elif i == 11: style_pct(c)
+                if i in (1, 2, 5, 11): style_data(c)
+                elif i == 13: style_pct(c)
                 elif i in (3, 6): style_dollar(c)
                 else: style_dollar(c)
                 c.fill = PROP_A_FILL
-                if i == 12 and flag == 'REVIEW':
-                    c.fill = WARN_FILL
-                    c.font = Font(bold=True, color='9C0006')
+                if i == 10: c.font = Font(bold=True)
+                if i == 11:
+                    if a['nb_qual'] and a['ren_qual']: c.fill = PatternFill('solid', fgColor='C6EFCE')
+                    elif a['nb_qual'] or a['ren_qual']: c.fill = PatternFill('solid', fgColor='FFEB9C')
+                    else: c.fill = WARN_FILL
             a_totals['paid'] += a['paid']
+            a_totals['paid_min'] += a['paid_after_min']
             a_totals['cur'] += cur
             r += 1
 
-        # Subtotal
         ws.cell(row=r, column=1, value='4-Month Total').font = Font(bold=True)
         ws.cell(row=r, column=9, value=a_totals['paid'])
-        ws.cell(row=r, column=13, value=a_totals['paid'] - a_totals['cur'])
-        ws.cell(row=r, column=14, value=a_totals['cur'])
-        for i in range(1, 15):
+        ws.cell(row=r, column=10, value=a_totals['paid_min'])
+        ws.cell(row=r, column=14, value=a_totals['paid_min'] - a_totals['cur'])
+        ws.cell(row=r, column=15, value=a_totals['cur'])
+        for i in range(1, 16):
             c = ws.cell(row=r, column=i)
             c.fill = SUB_FILL
-            if i in (9, 13, 14):
+            if i in (9, 10, 14, 15):
                 style_dollar(c)
                 c.font = Font(bold=True)
         r += 2
@@ -870,43 +949,47 @@ def build_agent_examples(wb, swap=False):
         ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=18)
         r += 1
 
-        b_headers = ['Month', 'NB Base ($10 x ct)', 'NB Liab Add ($5 x 35%)', 'NB Target (w/ kicker)', 'REN Base ($6 x ct)', 'REN Liab Add ($3 x 30%)', 'REN Target (w/ kicker)', 'RWR Target (w/ kicker)', 'PAID (= Target)', 'Safe Net', 'Bonus % of Safe Net', 'Review Flag (>40%)', 'vs Current', 'Current Bonus']
+        b_headers = ['Month', 'NB Base ($10 x ct)', 'NB Liab Add ($5 x 35%)', 'NB Target (w/ kicker)', 'REN Base ($6 x ct)', 'REN Liab Add ($3 x 30%)', 'REN Target (w/ kicker)', 'RWR Target (w/ kicker)', 'Total Target (no min)', 'PAID after MIN', 'Gates (NB/REN/RWR)', 'Safe Net', 'Bonus % SN', 'vs Current', 'Current Bonus']
         for i, h in enumerate(b_headers, 1):
             style_header(ws.cell(row=r, column=i, value=h))
         r += 1
 
-        b_totals = {'paid': 0, 'cur': 0}
+        b_totals = {'paid': 0, 'paid_min': 0, 'cur': 0}
         for month in MONTHS:
             d = agent_data[month]
             b = calc_proposal_b(d['NB'], d['RWR'], d['REN'])
             cur = current_bonus(d['NB'][0], d['RWR'][0])
-            flag = 'REVIEW' if b['review_flag'] else 'OK'
+            gates = f"{'Y' if b['nb_qual'] else 'n'}/{'Y' if b['ren_qual'] else 'n'}/{'Y' if b['rwr_qual'] else 'n'}"
             vals = [month, b['nb_base'], b['nb_liability'], b['nb_target'],
                     b['ren_base'], b['ren_liability'], b['ren_target'],
-                    b['rwr_target'], b['paid'], b['safe_net'],
-                    b['bonus_pct_of_safe_net'], flag,
-                    b['paid'] - cur, cur]
+                    b['rwr_target'], b['paid'], b['paid_after_min'], gates,
+                    b['safe_net'], b['bonus_pct_of_safe_net'],
+                    b['paid_after_min'] - cur, cur]
             for i, v in enumerate(vals, 1):
                 c = ws.cell(row=r, column=i, value=v)
-                if i in (1, 12): style_data(c)
-                elif i == 11: style_pct(c)
+                if i in (1, 11): style_data(c)
+                elif i == 13: style_pct(c)
                 else: style_dollar(c)
                 c.fill = PROP_B_FILL
-                if i == 12 and flag == 'REVIEW':
-                    c.fill = WARN_FILL
-                    c.font = Font(bold=True, color='9C0006')
+                if i == 10: c.font = Font(bold=True)
+                if i == 11:
+                    if b['nb_qual'] and b['ren_qual']: c.fill = PatternFill('solid', fgColor='C6EFCE')
+                    elif b['nb_qual'] or b['ren_qual']: c.fill = PatternFill('solid', fgColor='FFEB9C')
+                    else: c.fill = WARN_FILL
             b_totals['paid'] += b['paid']
+            b_totals['paid_min'] += b['paid_after_min']
             b_totals['cur'] += cur
             r += 1
 
         ws.cell(row=r, column=1, value='4-Month Total').font = Font(bold=True)
         ws.cell(row=r, column=9, value=b_totals['paid'])
-        ws.cell(row=r, column=13, value=b_totals['paid'] - b_totals['cur'])
-        ws.cell(row=r, column=14, value=b_totals['cur'])
-        for i in range(1, 15):
+        ws.cell(row=r, column=10, value=b_totals['paid_min'])
+        ws.cell(row=r, column=14, value=b_totals['paid_min'] - b_totals['cur'])
+        ws.cell(row=r, column=15, value=b_totals['cur'])
+        for i in range(1, 16):
             c = ws.cell(row=r, column=i)
             c.fill = SUB_FILL
-            if i in (9, 13, 14):
+            if i in (9, 10, 14, 15):
                 style_dollar(c)
                 c.font = Font(bold=True)
         r += 2
@@ -917,43 +1000,47 @@ def build_agent_examples(wb, swap=False):
         ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=18)
         r += 1
 
-        c_headers = ['Month', 'NB ($8 x ct)', 'REN ($8 x ct)', 'RWR ($1 x ct)', 'NB Target', 'REN Target', 'RWR Target', 'PAID (= Target)', 'Safe Net', 'Bonus % of Safe Net', 'Review Flag (>40%)', 'vs Current', 'Current Bonus']
+        c_headers = ['Month', 'NB ($8 x ct)', 'REN ($8 x ct)', 'RWR ($1 x ct)', 'NB Target', 'REN Target', 'RWR Target', 'Total Target (no min)', 'PAID after MIN', 'Gates (NB/REN/RWR)', 'Safe Net', 'Bonus % SN', 'vs Current', 'Current Bonus']
         for i, h in enumerate(c_headers, 1):
             style_header(ws.cell(row=r, column=i, value=h))
         r += 1
 
-        c_totals = {'paid': 0, 'cur': 0}
+        c_totals = {'paid': 0, 'paid_min': 0, 'cur': 0}
         for month in MONTHS:
             d = agent_data[month]
             cp = calc_proposal_c(d['NB'], d['RWR'], d['REN'])
             cur = current_bonus(d['NB'][0], d['RWR'][0])
-            flag = 'REVIEW' if cp['review_flag'] else 'OK'
+            gates = f"{'Y' if cp['nb_qual'] else 'n'}/{'Y' if cp['ren_qual'] else 'n'}/{'Y' if cp['rwr_qual'] else 'n'}"
             vals = [month, d['NB'][0]*8, d['REN'][0]*8, d['RWR'][0]*1,
                     cp['nb_target'], cp['ren_target'], cp['rwr_target'],
-                    cp['paid'], cp['safe_net'],
-                    cp['bonus_pct_of_safe_net'], flag,
-                    cp['paid'] - cur, cur]
+                    cp['paid'], cp['paid_after_min'], gates,
+                    cp['safe_net'], cp['bonus_pct_of_safe_net'],
+                    cp['paid_after_min'] - cur, cur]
             for i, v in enumerate(vals, 1):
                 c = ws.cell(row=r, column=i, value=v)
-                if i in (1, 11): style_data(c)
-                elif i == 10: style_pct(c)
+                if i in (1, 10): style_data(c)
+                elif i == 12: style_pct(c)
                 else: style_dollar(c)
                 c.fill = PROP_C_FILL
-                if i == 11 and flag == 'REVIEW':
-                    c.fill = WARN_FILL
-                    c.font = Font(bold=True, color='9C0006')
+                if i == 9: c.font = Font(bold=True)
+                if i == 10:
+                    if cp['nb_qual'] and cp['ren_qual']: c.fill = PatternFill('solid', fgColor='C6EFCE')
+                    elif cp['nb_qual'] or cp['ren_qual']: c.fill = PatternFill('solid', fgColor='FFEB9C')
+                    else: c.fill = WARN_FILL
             c_totals['paid'] += cp['paid']
+            c_totals['paid_min'] += cp['paid_after_min']
             c_totals['cur'] += cur
             r += 1
 
         ws.cell(row=r, column=1, value='4-Month Total').font = Font(bold=True)
         ws.cell(row=r, column=8, value=c_totals['paid'])
-        ws.cell(row=r, column=12, value=c_totals['paid'] - c_totals['cur'])
-        ws.cell(row=r, column=13, value=c_totals['cur'])
-        for i in range(1, 14):
+        ws.cell(row=r, column=9, value=c_totals['paid_min'])
+        ws.cell(row=r, column=13, value=c_totals['paid_min'] - c_totals['cur'])
+        ws.cell(row=r, column=14, value=c_totals['cur'])
+        for i in range(1, 15):
             c = ws.cell(row=r, column=i)
             c.fill = SUB_FILL
-            if i in (8, 12, 13):
+            if i in (8, 9, 13, 14):
                 style_dollar(c)
                 c.font = Font(bold=True)
         r += 3
@@ -965,78 +1052,93 @@ def build_comparison(wb):
     ws = wb.create_sheet('Real vs Swap Comparison')
     ws['A1'] = 'Real vs 50%-Swap Comparison (4-month totals per agent)'
     ws['A1'].font = TITLE_FONT
-    ws.merge_cells('A1:K1')
+    ws.merge_cells('A1:M1')
 
-    ws['A2'] = 'Same agents, same months. Shows the dollar uplift if 50% of rewrites become renewals - which is what the new plans are designed to drive.'
+    ws['A2'] = ('Same agents, same months. NO-MIN columns show target pay. WITH-MIN columns apply the '
+                f'${NB_MIN_PREMIUM:,}/{REN_MIN_PREMIUM:,} gates. The renewal-shift upside is the main message: '
+                'today the current plan punishes the swap; the new plans reward it.')
     ws['A2'].font = Font(italic=True, size=10, color='666666')
-    ws.merge_cells('A2:K2')
+    ws.merge_cells('A2:M2')
 
     r = 4
-    headers = ['Agent', 'Current (Real)', 'Current (Swap)', 'Prop A (Real)', 'Prop A (Swap)', 'A: Swap-Real', 'Prop B (Real)', 'Prop B (Swap)', 'B: Swap-Real', 'Prop C (Real)', 'Prop C (Swap)']
+    headers = ['Agent', 'Current (Real)', 'Current (Swap)',
+               'A no-min (Real)', 'A no-min (Swap)',
+               'A WITH MIN (Real)', 'A WITH MIN (Swap)',
+               'B WITH MIN (Real)', 'B WITH MIN (Swap)',
+               'C WITH MIN (Real)', 'C WITH MIN (Swap)',
+               'A-min Swap-Real', 'B-min Swap-Real']
     for i, h in enumerate(headers, 1):
         style_header(ws.cell(row=r, column=i, value=h))
     r += 1
 
-    grand = {k: 0 for k in ['cur_r','cur_s','a_r','a_s','b_r','b_s','c_r','c_s']}
+    grand = {k: 0 for k in ['cur_r','cur_s','a_r','a_s','am_r','am_s','b_r','b_s','bm_r','bm_s','c_r','c_s','cm_r','cm_s']}
     for agent in AGENT_NAMES:
-        cur_r = cur_s = a_r = a_s = b_r = b_s = c_r = c_s = 0
+        a = {k: 0 for k in grand}
         for month in MONTHS:
             real = AGENTS[agent][month]
             swap = swap_rwr_to_ren(real, 0.5)
-            cur_r += current_bonus(real['NB'][0], real['RWR'][0])
-            cur_s += current_bonus(swap['NB'][0], swap['RWR'][0])
-            a_r += calc_proposal_a(real['NB'], real['RWR'], real['REN'])['paid']
-            a_s += calc_proposal_a(swap['NB'], swap['RWR'], swap['REN'])['paid']
-            b_r += calc_proposal_b(real['NB'], real['RWR'], real['REN'])['paid']
-            b_s += calc_proposal_b(swap['NB'], swap['RWR'], swap['REN'])['paid']
-            c_r += calc_proposal_c(real['NB'], real['RWR'], real['REN'])['paid']
-            c_s += calc_proposal_c(swap['NB'], swap['RWR'], swap['REN'])['paid']
-        for col, val in enumerate([agent, cur_r, cur_s, a_r, a_s, a_s-a_r, b_r, b_s, b_s-b_r, c_r, c_s], 1):
+            a['cur_r'] += current_bonus(real['NB'][0], real['RWR'][0])
+            a['cur_s'] += current_bonus(swap['NB'][0], swap['RWR'][0])
+            ra = calc_proposal_a(real['NB'], real['RWR'], real['REN'])
+            sa = calc_proposal_a(swap['NB'], swap['RWR'], swap['REN'])
+            rb = calc_proposal_b(real['NB'], real['RWR'], real['REN'])
+            sb = calc_proposal_b(swap['NB'], swap['RWR'], swap['REN'])
+            rc = calc_proposal_c(real['NB'], real['RWR'], real['REN'])
+            sc = calc_proposal_c(swap['NB'], swap['RWR'], swap['REN'])
+            a['a_r']  += ra['paid'];  a['a_s']  += sa['paid']
+            a['am_r'] += ra['paid_after_min']; a['am_s'] += sa['paid_after_min']
+            a['b_r']  += rb['paid'];  a['b_s']  += sb['paid']
+            a['bm_r'] += rb['paid_after_min']; a['bm_s'] += sb['paid_after_min']
+            a['c_r']  += rc['paid'];  a['c_s']  += sc['paid']
+            a['cm_r'] += rc['paid_after_min']; a['cm_s'] += sc['paid_after_min']
+        row_vals = [agent, a['cur_r'], a['cur_s'],
+                    a['a_r'], a['a_s'], a['am_r'], a['am_s'],
+                    a['bm_r'], a['bm_s'], a['cm_r'], a['cm_s'],
+                    a['am_s'] - a['am_r'], a['bm_s'] - a['bm_r']]
+        for col, val in enumerate(row_vals, 1):
             c = ws.cell(row=r, column=col, value=val)
             if col == 1: style_data(c)
             else: style_dollar(c)
-        grand['cur_r'] += cur_r; grand['cur_s'] += cur_s
-        grand['a_r'] += a_r; grand['a_s'] += a_s
-        grand['b_r'] += b_r; grand['b_s'] += b_s
-        grand['c_r'] += c_r; grand['c_s'] += c_s
+            if col in (6, 7): c.fill = PROP_A_FILL
+            if col in (8, 9): c.fill = PROP_B_FILL
+            if col in (10, 11): c.fill = PROP_C_FILL
+        for k in grand: grand[k] += a[k]
         r += 1
 
-    # Grand total
     ws.cell(row=r, column=1, value='GRAND TOTAL (6 agents, 4 months)').font = Font(bold=True)
-    for col, val in enumerate(['GRAND TOTAL (6 agents, 4 months)',
-                                grand['cur_r'], grand['cur_s'],
-                                grand['a_r'], grand['a_s'], grand['a_s']-grand['a_r'],
-                                grand['b_r'], grand['b_s'], grand['b_s']-grand['b_r'],
-                                grand['c_r'], grand['c_s']], 1):
+    grand_vals = ['GRAND TOTAL (6 agents, 4 months)',
+                  grand['cur_r'], grand['cur_s'],
+                  grand['a_r'], grand['a_s'], grand['am_r'], grand['am_s'],
+                  grand['bm_r'], grand['bm_s'], grand['cm_r'], grand['cm_s'],
+                  grand['am_s'] - grand['am_r'], grand['bm_s'] - grand['bm_r']]
+    for col, val in enumerate(grand_vals, 1):
         c = ws.cell(row=r, column=col, value=val)
-        if col == 1:
-            style_data(c)
-        else:
-            style_dollar(c)
+        if col == 1: style_data(c)
+        else: style_dollar(c)
         c.font = Font(bold=True)
         c.fill = SUB_FILL
     r += 2
 
-    # Reads
     ws.cell(row=r, column=1, value='What this shows').font = SECTION_FONT
     ws.cell(row=r, column=1).fill = SECTION_FILL
-    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=11)
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=13)
     r += 1
     reads = [
-        '* The "Real" columns are todays numbers. The "Swap" columns are what each agent would earn if 50% of their rewrites moved to renewals.',
-        '* Under the CURRENT plan, the Swap actually DROPS pay - because the current plan rewards rewrites in the count tier. That is the broken incentive.',
-        '* Under Proposals A and B, the Swap INCREASES pay - which is exactly the behavior change ownership wants.',
-        '* Use this tab to defend the rollout: "Here is the dollar reward for each agent when they stop churning the book."',
+        '"Real" columns are todays numbers. "Swap" columns are what each agent would earn if 50% of their rewrites became renewals (same dollars, just reclassified).',
+        'Under the CURRENT plan, the Swap actually DROPS pay - because the current plan rewards rewrites in the count tier. Broken incentive.',
+        'Under Proposals A, B, C no-min, the Swap INCREASES pay - the behavior change ownership wants is rewarded.',
+        'Under WITH-MIN, the Swap also increases pay (more agents clear the REN gate). Tighter and harder, but the direction is right.',
+        'Use this tab to defend the rollout: "Here is the dollar reward each agent gets for stopping the rewrite habit."',
     ]
     for t in reads:
         c = ws.cell(row=r, column=1, value=t)
         c.font = Font(size=11)
         c.alignment = Alignment(wrap_text=True)
-        ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=11)
+        ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=13)
         ws.row_dimensions[r].height = 30
         r += 1
 
-    set_col_widths(ws, [25, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14])
+    set_col_widths(ws, [25, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 14, 14])
 
 
 def build_coverage_logic(wb):
@@ -1262,6 +1364,337 @@ def build_manual_tracker(wb):
     set_col_widths(ws, [16, 16, 12, 8, 14, 10, 12, 11, 12, 6, 6, 12, 6, 6, 6, 14, 11, 9, 11, 12])
 
 
+def build_safe_net_simple(wb):
+    """Plain-language explanation of what 'safe net' means and where it comes from."""
+    ws = wb.create_sheet('Safe Net Explained')
+    ws['A1'] = 'Safe Net Explained Simply'
+    ws['A1'].font = TITLE_FONT
+    ws.merge_cells('A1:F1')
+
+    ws['A2'] = "Safe net = the money the AGENCY actually has left after paying corporate and overhead. The bonus comes out of safe net, so it's the number we use to size what we can afford to pay."
+    ws['A2'].font = Font(italic=True, size=11, color='1F4E78')
+    ws.merge_cells('A2:F2')
+
+    r = 4
+    # Walk-through with a single $1,000 policy at 25% collected
+    ws.cell(row=r, column=1, value='STEP-BY-STEP: A $1,000 policy, customer pays $250 down (25%), carrier commission 10%').font = SECTION_FONT
+    ws.cell(row=r, column=1).fill = SECTION_FILL
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=6)
+    r += 1
+
+    headers = ['Step', 'What happens', 'Math', 'Dollar amount', 'Running total', 'Plain English']
+    for i, h in enumerate(headers, 1):
+        style_header(ws.cell(row=r, column=i, value=h))
+    r += 1
+
+    steps = [
+        ('1', 'Customer pays down payment', '$250 collected', '$250.00', '$250.00 in our hands', 'This is the money the agency actually has. The other $750 is on a payment plan.'),
+        ('2', 'Carrier pays commission on what was collected', '$250 x 10% comm', '$25.00', '$25.00 of commission earned', 'Carriers pay 8-15% on collected premium. We use 11% as the blended rate.'),
+        ('3', 'Royalty goes to corporate', '$25 x 17.5% royalty', '-$4.38', '$20.63 left after royalty', 'Every dollar of commission gives up 17.5 cents to the franchise.'),
+        ('4', 'Overhead reserve (rent, payroll, tech, admin, bank fees)', '$20.63 x 40% overhead', '-$8.25', '$12.38 SAFE NET', 'This is the conservative estimate of what every commission dollar costs to keep the doors open.'),
+        ('5', 'Bonus review threshold', '$12.38 x 40% (soft cap)', '$4.95 cap', '$4.95 is the most we want to spend on bonus for this one policy in a month', "If the bonus target on this policy is above $4.95, ownership flags it for review. It does NOT auto-cut."),
+        ('6', 'What the agency keeps', '$12.38 - actual bonus paid', 'Variable', 'Profit + taxes', "Whatever is left of safe net after bonus is real profit. That's why ownership cares about the safe net number."),
+    ]
+    for row in steps:
+        for i, v in enumerate(row, 1):
+            c = ws.cell(row=r, column=i, value=v)
+            style_data(c)
+            if r % 2 == 0: c.fill = SUB_FILL
+        ws.row_dimensions[r].height = 36
+        r += 1
+
+    r += 1
+    ws.cell(row=r, column=1, value='SAME MATH AT THE MONTHLY LEVEL').font = SECTION_FONT
+    ws.cell(row=r, column=1).fill = SECTION_FILL
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=6)
+    r += 1
+    ws.cell(row=r, column=1, value="In the workbook the SAME formula is applied at the agent-month level. Add up everything the agent collected that month (NB + RWR + REN), multiply by 11% carrier commission, subtract 17.5% royalty, subtract 40% overhead. The result is that agent's monthly safe net. The bonus is judged against THAT number.").alignment = Alignment(wrap_text=True)
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=6)
+    ws.row_dimensions[r].height = 50
+    r += 2
+
+    # Worked example: Abel Guaina January
+    ws.cell(row=r, column=1, value="WORKED EXAMPLE - Abel Guaina, January 2026").font = SECTION_FONT
+    ws.cell(row=r, column=1).fill = SECTION_FILL
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=6)
+    r += 1
+
+    headers2 = ['Step', 'Formula', 'Plug-in', 'Output', 'What it means', '']
+    for i, h in enumerate(headers2, 1):
+        if h: style_header(ws.cell(row=r, column=i, value=h))
+    r += 1
+
+    # Compute Abel Jan numbers fresh
+    d = AGENTS['Abel Guaina']['January']
+    total_col = d['NB'][2] + d['RWR'][2] + d['REN'][2]
+    gross = total_col * BLENDED_COMM
+    after_royalty = gross * (1 - ROYALTY)
+    safe_net = after_royalty * (1 - OVERHEAD)
+    cap = safe_net * CAP_STANDARD
+
+    abel_steps = [
+        ('1. Total collected', 'NB col + RWR col + REN col', f"${d['NB'][2]:,.0f} + ${d['RWR'][2]:,.0f} + ${d['REN'][2]:,.0f}", f"${total_col:,.2f}", "Money Abel's customers actually paid in January"),
+        ('2. Gross commission', 'Collected x 11% blended comm', f"${total_col:,.2f} x 0.11", f"${gross:,.2f}", "Commission earned from carriers"),
+        ('3. After royalty', 'Gross x (1 - 17.5%)', f"${gross:,.2f} x 0.825", f"${after_royalty:,.2f}", "After corporate royalty"),
+        ('4. SAFE NET', 'After-royalty x (1 - 40% overhead)', f"${after_royalty:,.2f} x 0.60", f"${safe_net:,.2f}", "What the agency truly has available for bonus + profit + taxes from Abel's book"),
+        ('5. Review threshold (40%)', 'Safe net x 40%', f"${safe_net:,.2f} x 0.40", f"${cap:,.2f}", "Bonus targets above this number get flagged for ownership review"),
+        ('6. Proposal A target paid', "(from rules)", "Abel's January NB+REN+RWR targets", "$252.00", "$252 is 36% of safe net - under the 40% threshold, no flag."),
+        ('7. Proposal B target paid', "(from rules)", "Bigger because $10 NB base", "$399.46", "$399 is 57% of safe net - ABOVE 40%, flagged for review."),
+    ]
+    for row in abel_steps:
+        for i, v in enumerate(row, 1):
+            c = ws.cell(row=r, column=i, value=v)
+            style_data(c)
+            if r % 2 == 0: c.fill = SUB_FILL
+        ws.row_dimensions[r].height = 32
+        r += 1
+
+    r += 1
+    ws.cell(row=r, column=1, value="KEY POINT").font = SECTION_FONT
+    ws.cell(row=r, column=1).fill = SECTION_FILL
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=6)
+    r += 1
+    keys = [
+        "Safe net is NOT the agency's revenue. Revenue is the total commission ($25 in the example). Safe net is what's left after royalty and overhead reserve - that's where the bonus has to come from.",
+        "The bigger the COLLECTED amount, the bigger the safe net, the more room for bonus. That is why the collected-% kicker exists - it pushes agents toward bigger down payments and PIF, which makes the safe net bigger.",
+        "Under TODAY'S plan, bonuses paid total roughly 57% of safe net. That is too high. All three proposals come in below that. The plain-English message: 'today we are giving away more than half of what is left after rent and royalty. The new plans correct that.'",
+    ]
+    for t in keys:
+        c = ws.cell(row=r, column=1, value=t)
+        c.font = Font(size=11)
+        c.alignment = Alignment(wrap_text=True)
+        ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=6)
+        ws.row_dimensions[r].height = 40
+        r += 1
+
+    set_col_widths(ws, [22, 32, 26, 22, 38, 14])
+
+
+def build_minimum_requirements(wb):
+    """Sheet explaining the $50k/$50k min requirement and showing pass/fail per agent-month."""
+    ws = wb.create_sheet('Minimum Requirements')
+    ws['A1'] = 'Minimum Requirements (NEW)'
+    ws['A1'].font = TITLE_FONT
+    ws.merge_cells('A1:J1')
+
+    ws['A2'] = (f"Replaces the current 35-policy NB+RWR minimum with a PREMIUM-based gate: "
+                f"NB premium >= ${NB_MIN_PREMIUM:,}/month AND REN premium >= ${REN_MIN_PREMIUM:,}/month. "
+                f"RWR has no own minimum, but RWR bonus only pays when BOTH NB and REN gates pass that month.")
+    ws['A2'].font = Font(italic=True, size=11, color='1F4E78')
+    ws.merge_cells('A2:J2')
+
+    r = 4
+    ws.cell(row=r, column=1, value='RULES').font = SECTION_FONT
+    ws.cell(row=r, column=1).fill = SECTION_FILL
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=10)
+    r += 1
+    headers = ['Bonus line', 'Gate', 'If gate passes', 'If gate fails']
+    for i, h in enumerate(headers, 1):
+        style_header(ws.cell(row=r, column=i, value=h))
+    r += 1
+    rows = [
+        ('NB bonus line', f"NB written premium >= ${NB_MIN_PREMIUM:,} this month", 'Pay the full NB target (from proposal rules + kicker)', 'NB bonus = $0 this month'),
+        ('REN bonus line', f"REN written premium >= ${REN_MIN_PREMIUM:,} this month", 'Pay the full REN target', 'REN bonus = $0 this month'),
+        ('RWR bonus line', 'BOTH gates pass', 'Pay the full RWR target ($2/policy x kicker)', 'RWR bonus = $0 this month - even with 50 rewrites'),
+    ]
+    for row in rows:
+        for i, v in enumerate(row, 1):
+            c = ws.cell(row=r, column=i, value=v)
+            style_data(c)
+            c.fill = SUB_FILL if r % 2 == 0 else PatternFill('solid', fgColor='FFFFFF')
+        ws.row_dimensions[r].height = 30
+        r += 1
+    r += 1
+
+    # Pass/fail table per agent-month (REAL data)
+    ws.cell(row=r, column=1, value='WHO QUALIFIES IN REAL DATA (Jan-Apr 2026)').font = SECTION_FONT
+    ws.cell(row=r, column=1).fill = SECTION_FILL
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=10)
+    r += 1
+
+    qual_headers = ['Agent', 'Month', 'NB Premium', 'REN Premium', 'NB Gate (>=$50k)', 'REN Gate (>=$50k)', 'RWR Gate (both)', 'A bonus paid', 'B bonus paid', 'C bonus paid']
+    for i, h in enumerate(qual_headers, 1):
+        style_header(ws.cell(row=r, column=i, value=h))
+    r += 1
+
+    for agent in AGENT_NAMES:
+        for month in MONTHS:
+            d = AGENTS[agent][month]
+            a = calc_proposal_a(d['NB'], d['RWR'], d['REN'])
+            b = calc_proposal_b(d['NB'], d['RWR'], d['REN'])
+            cp = calc_proposal_c(d['NB'], d['RWR'], d['REN'])
+            vals = [agent, month, d['NB'][1], d['REN'][1],
+                    'PASS' if a['nb_qual'] else 'fail',
+                    'PASS' if a['ren_qual'] else 'fail',
+                    'PASS' if a['rwr_qual'] else 'fail',
+                    a['paid_after_min'], b['paid_after_min'], cp['paid_after_min']]
+            for i, v in enumerate(vals, 1):
+                c = ws.cell(row=r, column=i, value=v)
+                if i in (3, 4, 8, 9, 10): style_dollar(c)
+                else: style_data(c)
+                if i in (5, 6, 7):
+                    if v == 'PASS':
+                        c.fill = PatternFill('solid', fgColor='C6EFCE')
+                        c.font = Font(bold=True, color='006100')
+                    else:
+                        c.fill = WARN_FILL
+            r += 1
+
+    # Now SWAP
+    r += 2
+    ws.cell(row=r, column=1, value='WHO QUALIFIES IF 50% OF RWR BECOMES REN').font = SECTION_FONT
+    ws.cell(row=r, column=1).fill = SECTION_FILL
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=10)
+    r += 1
+    for i, h in enumerate(qual_headers, 1):
+        style_header(ws.cell(row=r, column=i, value=h))
+    r += 1
+
+    for agent in AGENT_NAMES:
+        for month in MONTHS:
+            d = swap_rwr_to_ren(AGENTS[agent][month], 0.5)
+            a = calc_proposal_a(d['NB'], d['RWR'], d['REN'])
+            b = calc_proposal_b(d['NB'], d['RWR'], d['REN'])
+            cp = calc_proposal_c(d['NB'], d['RWR'], d['REN'])
+            vals = [agent, month, d['NB'][1], d['REN'][1],
+                    'PASS' if a['nb_qual'] else 'fail',
+                    'PASS' if a['ren_qual'] else 'fail',
+                    'PASS' if a['rwr_qual'] else 'fail',
+                    a['paid_after_min'], b['paid_after_min'], cp['paid_after_min']]
+            for i, v in enumerate(vals, 1):
+                c = ws.cell(row=r, column=i, value=v)
+                if i in (3, 4, 8, 9, 10): style_dollar(c)
+                else: style_data(c)
+                if i in (5, 6, 7):
+                    if v == 'PASS':
+                        c.fill = PatternFill('solid', fgColor='C6EFCE')
+                        c.font = Font(bold=True, color='006100')
+                    else:
+                        c.fill = WARN_FILL
+            r += 1
+
+    r += 2
+    ws.cell(row=r, column=1, value='WHAT IF WE LOWER THE THRESHOLD?').font = SECTION_FONT
+    ws.cell(row=r, column=1).fill = SECTION_FILL
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=10)
+    r += 1
+
+    sens_headers = ['Threshold', 'NB qual months (REAL)', 'REN qual months (REAL)', 'RWR qual months (REAL)', 'NB qual months (SWAP)', 'REN qual months (SWAP)', 'RWR qual months (SWAP)', 'Comment', '', '']
+    for i, h in enumerate(sens_headers, 1):
+        if h: style_header(ws.cell(row=r, column=i, value=h))
+    r += 1
+
+    for label, min_v in [('$25,000', 25000), ('$35,000', 35000), ('$50,000 (proposed)', 50000), ('$75,000', 75000)]:
+        nb_real_q = ren_real_q = rwr_real_q = 0
+        nb_swap_q = ren_swap_q = rwr_swap_q = 0
+        for agent in AGENT_NAMES:
+            for month in MONTHS:
+                d = AGENTS[agent][month]
+                ds = swap_rwr_to_ren(d, 0.5)
+                if d['NB'][1] >= min_v: nb_real_q += 1
+                if d['REN'][1] >= min_v: ren_real_q += 1
+                if d['NB'][1] >= min_v and d['REN'][1] >= min_v: rwr_real_q += 1
+                if ds['NB'][1] >= min_v: nb_swap_q += 1
+                if ds['REN'][1] >= min_v: ren_swap_q += 1
+                if ds['NB'][1] >= min_v and ds['REN'][1] >= min_v: rwr_swap_q += 1
+        if min_v == 25000: comment = "Soft - most agents qualify on NB; REN still tight in REAL but loosens in SWAP."
+        elif min_v == 35000: comment = "Roughly matches the old 35-policy bar. Achievable today on NB, REN remains the stretch."
+        elif min_v == 50000: comment = "Proposed. NB gate clears for top performers; REN gate forces book-building."
+        else: comment = "Very tight. Only one or two months qualify even in SWAP. Use only for tenured agents."
+        vals = [label, f"{nb_real_q}/24", f"{ren_real_q}/24", f"{rwr_real_q}/24",
+                f"{nb_swap_q}/24", f"{ren_swap_q}/24", f"{rwr_swap_q}/24", comment]
+        for i, v in enumerate(vals, 1):
+            c = ws.cell(row=r, column=i, value=v)
+            style_data(c)
+            if r % 2 == 0: c.fill = SUB_FILL
+            if 'proposed' in str(vals[0]).lower():
+                c.fill = PROP_A_FILL
+        ws.row_dimensions[r].height = 30
+        r += 1
+
+    set_col_widths(ws, [24, 12, 14, 14, 16, 16, 16, 14, 14, 14])
+
+
+def build_previous_vs_new(wb):
+    """Agent-by-agent dollar comparison: Previous structure (current) vs Proposal A WITH minimum."""
+    ws = wb.create_sheet('Previous vs New Detailed')
+    ws['A1'] = 'Previous Structure vs New Structure - What Each Agent Would Have Earned'
+    ws['A1'].font = TITLE_FONT
+    ws.merge_cells('A1:M1')
+
+    ws['A2'] = ("Side-by-side dollar comparison for each agent, each month. 'PREVIOUS' is today's count-tier plan. "
+                "'NEW (no min)' is the proposal target. 'NEW (with min)' applies the $50k NB / $50k REN gates.")
+    ws['A2'].font = Font(italic=True, size=10, color='666666')
+    ws.merge_cells('A2:M2')
+
+    r = 4
+    for agent in AGENT_NAMES:
+        ws.cell(row=r, column=1, value=agent).font = SECTION_FONT
+        ws.cell(row=r, column=1).fill = SECTION_FILL
+        ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=13)
+        r += 1
+
+        headers = ['Month', 'NB cnt', 'NB Prem', 'REN cnt', 'REN Prem', 'RWR cnt',
+                   'Previous (current)', 'A no-min', 'A WITH MIN', 'A vs Previous',
+                   'B WITH MIN', 'C WITH MIN', 'Gates']
+        for i, h in enumerate(headers, 1):
+            style_header(ws.cell(row=r, column=i, value=h))
+        r += 1
+
+        prev_total = a_nomin = a_min = b_min = c_min = 0
+        for month in MONTHS:
+            d = AGENTS[agent][month]
+            cur = current_bonus(d['NB'][0], d['RWR'][0])
+            a = calc_proposal_a(d['NB'], d['RWR'], d['REN'])
+            b = calc_proposal_b(d['NB'], d['RWR'], d['REN'])
+            cp = calc_proposal_c(d['NB'], d['RWR'], d['REN'])
+            gates = f"NB:{'Y' if a['nb_qual'] else 'n'} REN:{'Y' if a['ren_qual'] else 'n'} RWR:{'Y' if a['rwr_qual'] else 'n'}"
+            vals = [month, d['NB'][0], d['NB'][1], d['REN'][0], d['REN'][1], d['RWR'][0],
+                    cur, a['paid'], a['paid_after_min'], a['paid_after_min'] - cur,
+                    b['paid_after_min'], cp['paid_after_min'], gates]
+            for i, v in enumerate(vals, 1):
+                c = ws.cell(row=r, column=i, value=v)
+                if i in (2, 4, 6): style_int(c)
+                elif i in (3, 5): style_dollar(c)
+                elif i == 13: style_data(c)
+                else: style_dollar(c)
+                if i == 7: c.fill = CURRENT_FILL
+                if i in (8, 9): c.fill = PROP_A_FILL
+                if i == 9: c.font = Font(bold=True)
+                if i == 11: c.fill = PROP_B_FILL; c.font = Font(bold=True)
+                if i == 12: c.fill = PROP_C_FILL; c.font = Font(bold=True)
+            prev_total += cur
+            a_nomin += a['paid']
+            a_min += a['paid_after_min']
+            b_min += b['paid_after_min']
+            c_min += cp['paid_after_min']
+            r += 1
+
+        ws.cell(row=r, column=1, value='4-Month Total').font = Font(bold=True)
+        ws.cell(row=r, column=7, value=prev_total)
+        ws.cell(row=r, column=8, value=a_nomin)
+        ws.cell(row=r, column=9, value=a_min)
+        ws.cell(row=r, column=10, value=a_min - prev_total)
+        ws.cell(row=r, column=11, value=b_min)
+        ws.cell(row=r, column=12, value=c_min)
+        for i in range(1, 14):
+            c = ws.cell(row=r, column=i)
+            c.fill = SUB_FILL
+            if i in (7, 8, 9, 10, 11, 12):
+                style_dollar(c)
+                c.font = Font(bold=True)
+        r += 1
+
+        # Plain-English read for this agent
+        ws.cell(row=r, column=1, value=f"Read: under PREVIOUS plan {agent.split()[0]} earned ${prev_total:,.0f} in 4 months. Under NEW Proposal A WITHOUT minimums it would be ${a_nomin:,.0f}. WITH $50k/$50k minimums it drops to ${a_min:,.0f} because the REN gate barely opens.").alignment = Alignment(wrap_text=True)
+        ws.cell(row=r, column=1).font = Font(italic=True, size=10, color='666666')
+        ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=13)
+        ws.row_dimensions[r].height = 30
+        r += 2
+
+    set_col_widths(ws, [12, 8, 11, 8, 11, 8, 13, 12, 13, 14, 13, 13, 20])
+
+
 def build_rules_side_by_side(wb):
     ws = wb.create_sheet('Rules Side by Side')
     ws['A1'] = 'Rules: Current vs Proposal A vs Proposal B vs Proposal C'
@@ -1278,6 +1711,28 @@ def build_rules_side_by_side(wb):
         style_header(ws.cell(row=r, column=i, value=h))
     r += 1
 
+    # Recompute totals so this table always matches the engine
+    real = {'cur': 0, 'a': 0, 'a_min': 0, 'b': 0, 'b_min': 0, 'c': 0, 'c_min': 0}
+    swap = {'cur': 0, 'a': 0, 'a_min': 0, 'b': 0, 'b_min': 0, 'c': 0, 'c_min': 0}
+    for agent in AGENT_NAMES:
+        for month in MONTHS:
+            d = AGENTS[agent][month]
+            ds = swap_rwr_to_ren(d, 0.5)
+            real['cur'] += current_bonus(d['NB'][0], d['RWR'][0])
+            swap['cur'] += current_bonus(ds['NB'][0], ds['RWR'][0])
+            a = calc_proposal_a(d['NB'], d['RWR'], d['REN'])
+            real['a'] += a['paid']; real['a_min'] += a['paid_after_min']
+            as_ = calc_proposal_a(ds['NB'], ds['RWR'], ds['REN'])
+            swap['a'] += as_['paid']; swap['a_min'] += as_['paid_after_min']
+            b = calc_proposal_b(d['NB'], d['RWR'], d['REN'])
+            real['b'] += b['paid']; real['b_min'] += b['paid_after_min']
+            bs = calc_proposal_b(ds['NB'], ds['RWR'], ds['REN'])
+            swap['b'] += bs['paid']; swap['b_min'] += bs['paid_after_min']
+            cp = calc_proposal_c(d['NB'], d['RWR'], d['REN'])
+            real['c'] += cp['paid']; real['c_min'] += cp['paid_after_min']
+            cs = calc_proposal_c(ds['NB'], ds['RWR'], ds['REN'])
+            swap['c'] += cs['paid']; swap['c_min'] += cs['paid_after_min']
+
     rows = [
         ('Bonus base', 'Count tier (NB+RWR)', 'Written premium tier', 'Coverage type', 'Flat per policy'),
         ('NB - low premium (< $1,200)', 'Count toward tier', '$5', '$10 (base coverage)', '$8'),
@@ -1288,12 +1743,16 @@ def build_rules_side_by_side(wb):
         ('Coverage detail', 'Not tracked', 'Not paid separately', 'BI+UM bundle = +$5 NB / +$3 REN', 'Not tracked'),
         ('PIF add', 'Not paid', '+$8 NB / +$12 high NB / +$5 REN', '+$8 NB / +$12 high NB / +$5 REN', 'No (kicker only)'),
         ('Collected % kicker', 'NONE', '+10% / +15% / +20% / +25%', 'Same as A', 'Same as A'),
-        ('Profit protection', 'None per-policy', '40% safe net review + 90-day chargeback', 'Same as A', 'Same as A'),
+        ('Monthly minimum (NEW)', '35 policies NB+RWR', f'NB >= ${NB_MIN_PREMIUM/1000:.0f}k AND REN >= ${REN_MIN_PREMIUM/1000:.0f}k', 'Same as A', 'Same as A'),
+        ('RWR gate', 'No - RWR counts toward 35', 'RWR paid only if BOTH NB+REN gates pass', 'Same as A', 'Same as A'),
+        ('Profit protection', 'None per-policy', '40% safe net review + 90-day chargeback + minimums', 'Same as A', 'Same as A'),
         ('Best for', 'Status quo only', 'Simple payroll, premium-focused', 'Coverage upsell, agent motivation', 'Killing the rewrite habit'),
         ('Tradeoff', 'Rewards churning', 'Less generous than B', 'More generous, requires coverage tracking', 'No premium/coverage signal'),
         ('Recommended decision', 'Phase out', 'Conservative choice', 'PILOT (recommended)', 'If A or B rejected'),
-        ('4-month cost (6 agents, REAL)', '$12,220', '$6,219', '$9,459', '$6,481'),
-        ('4-month cost (6 agents, SWAP)', '$7,110', '$7,474', '$11,616', '$9,565'),
+        ('4-month cost - REAL, no min', f"${real['cur']:,.0f}", f"${real['a']:,.0f}", f"${real['b']:,.0f}", f"${real['c']:,.0f}"),
+        ('4-month cost - REAL, WITH min', f"${real['cur']:,.0f}", f"${real['a_min']:,.0f}", f"${real['b_min']:,.0f}", f"${real['c_min']:,.0f}"),
+        ('4-month cost - SWAP, no min', f"${swap['cur']:,.0f}", f"${swap['a']:,.0f}", f"${swap['b']:,.0f}", f"${swap['c']:,.0f}"),
+        ('4-month cost - SWAP, WITH min', f"${swap['cur']:,.0f}", f"${swap['a_min']:,.0f}", f"${swap['b_min']:,.0f}", f"${swap['c_min']:,.0f}"),
     ]
     for row in rows:
         for i, v in enumerate(row, 1):
@@ -1452,6 +1911,9 @@ def build():
 
     build_readme(wb)
     build_executive_summary(wb)
+    build_safe_net_simple(wb)
+    build_minimum_requirements(wb)
+    build_previous_vs_new(wb)
     build_rules_side_by_side(wb)
     build_proposal_a(wb)
     build_proposal_b(wb)
