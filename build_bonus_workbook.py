@@ -80,8 +80,11 @@ LIAB_ADOPTION_NB = 0.35  # 35% of NB have BI+UM bundle (manager verifies)
 LIAB_ADOPTION_REN = 0.30 # 30% of REN have BI+UM bundle (already in book)
 
 # NEW: Minimum-requirement thresholds (monthly, by written premium)
-NB_MIN_PREMIUM = 50000   # Must write at least $50,000 NB premium in the month to earn the NB bonus
-REN_MIN_PREMIUM = 50000  # Must keep at least $50,000 REN premium in the month to earn the REN bonus
+# Calibrated from actual agent production:
+#   - NB $25k: 71% of REAL months pass (close to the old 35-policy bar of $1,500 x 35 = $52k, but split)
+#   - REN $15k: 4% REAL pass / 96% SWAP pass - the right "achievable when behavior shifts" bar
+NB_MIN_PREMIUM = 25000
+REN_MIN_PREMIUM = 15000
 # RWR bonus is paid ONLY if BOTH NB and REN minimums are met. RWR has no own threshold.
 
 # ============================================================================
@@ -1457,10 +1460,12 @@ def build_safe_net_simple(wb):
     r += 1
 
     facts = [
-        ('The carrier pays the agency commission on the WRITTEN premium, NOT just the down payment.', 'Example: $1,500 policy, 10% commission. Agency gets $150 commission upfront, even though the customer only paid $150 down.'),
-        ('If the customer stops paying, the carrier charges back the unearned commission.', 'Same example: customer pays only $150, then walks. Carrier reverses ~$135 of the $150 commission. Net kept: ~$15.'),
-        ('So in practice the commission we actually KEEP is roughly equal to "commission on what was collected".', 'That is why the workbook computes safe net using collected x commission rate - the math nets out the same as written-comm minus chargeback.'),
-        ('The higher the % collected at the down payment, the lower the chance of cancellation, the less chargeback.', 'PIF (paid in full) = essentially no chargeback risk. 50% down = much less chargeback than 15% down. That is why the kicker exists.'),
+        ('Most carriers pay commission on the WRITTEN premium upfront (advance commission).', 'Example: $1,500 policy at 10% advance commission. Agency receives $150 upfront, even if the customer only paid $150 down.'),
+        ('Some carriers pay AS EARNED (only on the premium actually collected from the customer).', 'On those carriers there is no chargeback risk because nothing was advanced in the first place. Net result is similar.'),
+        ('On advance-commission carriers, if the customer stops paying, the carrier reverses the unearned commission.', 'Same example: customer pays only $150, then walks. Carrier reverses ~$135 of the $150 advance. Net kept: ~$15.'),
+        ('Commission RATES vary 8%-15% by carrier.', 'Bristol West 8%, NATIONAL GENERAL 10%, United Auto 12%, Sterling MGA 13%, Geico/Kemper 15%. The workbook uses an 11% blended rate - conservative.'),
+        ('Either way, the commission we actually KEEP nets out to roughly: collected x commission rate.', 'That is the formula in the workbook. The advance + chargeback model and the as-earned model produce the same long-run number.'),
+        ('Higher down payment / PIF reduces chargeback risk and lifts the safe net.', 'PIF (100% collected) = no chargeback at all. That is why the collected % kicker matters - it pushes agents toward bigger down payments.'),
     ]
     for h, t in facts:
         ws.cell(row=r, column=1, value=h).font = Font(bold=True, size=11)
@@ -1576,19 +1581,21 @@ def build_minimum_requirements(wb):
     ws.merge_cells('A2:J2')
 
     r = 4
-    ws.cell(row=r, column=1, value='WHY THESE NUMBERS - SALARY COVERAGE').font = SECTION_FONT
+    ws.cell(row=r, column=1, value='HOW THESE NUMBERS WERE PICKED - DATA-DRIVEN').font = SECTION_FONT
     ws.cell(row=r, column=1).fill = SECTION_FILL
     ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=10)
     r += 1
 
     ws.cell(row=r, column=1, value=(
-        "The minimum should at LEAST cover the agent's salary cost to the agency. "
-        "Below the minimum, the agent's production has not yet paid for themselves - bonus would come out of owner's profit. "
-        "The $50,000 NB + $50,000 REN gates are calibrated to roughly that break-even point."
+        f"Looking at the 24 agent-months in the source data (6 agents x 4 months): "
+        f"NB premium per month ranges $7.7k-$68.5k (median $30k). REN premium per month ranges $0-$19.6k (median $3.7k). "
+        f"In the 50%-swap scenario, REN climbs to a $11.8k-$54.4k range (median $22.8k). "
+        f"The proposed gates are NB ${NB_MIN_PREMIUM:,} and REN ${REN_MIN_PREMIUM:,} - chosen so the NB gate is achievable "
+        f"on today's behavior (71% of real months pass) and the REN gate is achievable once behavior shifts (96% of swap months pass)."
     )).alignment = Alignment(wrap_text=True, vertical='top')
     ws.cell(row=r, column=1).font = Font(size=11)
     ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=10)
-    ws.row_dimensions[r].height = 40
+    ws.row_dimensions[r].height = 60
     r += 2
 
     sal_headers = ['Step', 'Math', 'Number', 'What it means', '', '', '', '', '', '']
@@ -1596,28 +1603,59 @@ def build_minimum_requirements(wb):
         if h: style_header(ws.cell(row=r, column=i, value=h))
     r += 1
 
-    # At $50k NB + $50k REN = $100k written. At typical 25% collection blend = $25k collected.
     written_floor = NB_MIN_PREMIUM + REN_MIN_PREMIUM
-    typical_coll_rate = 0.25
-    collected_floor = written_floor * typical_coll_rate
-    comm_at_floor = collected_floor * BLENDED_COMM
-    after_roy_floor = comm_at_floor * (1 - ROYALTY)
-    typical_salary = 2500  # entry-level Florida P&C agent base, monthly
+    collected_25 = written_floor * 0.25
+    collected_50 = written_floor * 0.50
+    comm_25 = collected_25 * BLENDED_COMM * (1 - ROYALTY)
+    comm_50 = collected_50 * BLENDED_COMM * (1 - ROYALTY)
+    typical_salary = 2200  # entry-level Florida P&C agent
 
     sal_steps = [
-        ('1', 'NB minimum + REN minimum', f"${NB_MIN_PREMIUM:,} + ${REN_MIN_PREMIUM:,} = ${written_floor:,}", "Total written premium needed to clear both gates"),
-        ('2', 'x typical collection rate', f"${written_floor:,} x {typical_coll_rate:.0%}", f"= ${collected_floor:,.0f} collected"),
-        ('3', 'x 11% blended commission', f"${collected_floor:,.0f} x 11%", f"= ${comm_at_floor:,.0f} expected commission"),
-        ('4', 'x (1 - 17.5% royalty)', f"${comm_at_floor:,.0f} x 0.825", f"= ${after_roy_floor:,.0f} after royalty"),
-        ('5', 'vs typical agent salary cost', f"${after_roy_floor:,.0f} vs ${typical_salary:,}/mo", f"At the floor, agent contributes ~${after_roy_floor:,.0f}. Roughly covers an entry-level salary."),
-        ('6', 'Therefore', '-', "Above this floor, agent's production has paid for itself - bonus comes out of profit, not owner's pocket. Below this floor, no bonus."),
+        ('1', 'NB minimum + REN minimum', f"${NB_MIN_PREMIUM:,} + ${REN_MIN_PREMIUM:,} = ${written_floor:,} written", "Total written premium needed to clear both gates"),
+        ('2', 'At 25% collected (typical down today)', f"${written_floor:,} x 25% = ${collected_25:,.0f}", f"-> commission retained ~${comm_25:,.0f}/mo"),
+        ('3', 'At 50% collected (target after kicker push)', f"${written_floor:,} x 50% = ${collected_50:,.0f}", f"-> commission retained ~${comm_50:,.0f}/mo"),
+        ('4', 'vs typical entry-level salary', f"${comm_25:,.0f} (25%) or ${comm_50:,.0f} (50%) vs ${typical_salary:,}/mo", f"At 25% collected the agent has not yet covered salary - that is why the COLLECTED KICKER is the key lever. Push collection up and the agent pays for themselves."),
+        ('5', 'Plus lifetime renewal value', '~30% of NB renews -> repeat commission next year', "Every $40k of well-collected NB this year is ~$12k of guaranteed renewal commission next year. That book-building is the real long-term math."),
+        ('6', 'Therefore', '-', "Minimums are the PRODUCTION FLOOR (must do baseline activity). The KICKER is the PROFITABILITY LEVER (collect higher = cover salary + pay bonus from real profit)."),
     ]
     for row in sal_steps:
         for i, v in enumerate(row, 1):
             c = ws.cell(row=r, column=i, value=v)
             style_data(c)
             if r % 2 == 0: c.fill = SUB_FILL
-        ws.row_dimensions[r].height = 32
+        ws.row_dimensions[r].height = 36
+        r += 1
+    r += 1
+
+    # Pass-rate sensitivity at the chosen threshold
+    ws.cell(row=r, column=1, value=f'PASS RATES AT THE PROPOSED MINIMUMS (${NB_MIN_PREMIUM:,} NB / ${REN_MIN_PREMIUM:,} REN)').font = SECTION_FONT
+    ws.cell(row=r, column=1).fill = SECTION_FILL
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=10)
+    r += 1
+    pass_headers = ['Gate', 'REAL data', 'SWAP data (50% RWR→REN)', 'Read', '', '', '', '', '', '']
+    for i, h in enumerate(pass_headers, 1):
+        if h: style_header(ws.cell(row=r, column=i, value=h))
+    r += 1
+
+    # Compute pass rates
+    nb_real_pass = sum(1 for a in AGENT_NAMES for m in MONTHS if AGENTS[a][m]['NB'][1] >= NB_MIN_PREMIUM)
+    ren_real_pass = sum(1 for a in AGENT_NAMES for m in MONTHS if AGENTS[a][m]['REN'][1] >= REN_MIN_PREMIUM)
+    rwr_real_pass = sum(1 for a in AGENT_NAMES for m in MONTHS if AGENTS[a][m]['NB'][1] >= NB_MIN_PREMIUM and AGENTS[a][m]['REN'][1] >= REN_MIN_PREMIUM)
+    nb_swap_pass = sum(1 for a in AGENT_NAMES for m in MONTHS if swap_rwr_to_ren(AGENTS[a][m], 0.5)['NB'][1] >= NB_MIN_PREMIUM)
+    ren_swap_pass = sum(1 for a in AGENT_NAMES for m in MONTHS if swap_rwr_to_ren(AGENTS[a][m], 0.5)['REN'][1] >= REN_MIN_PREMIUM)
+    rwr_swap_pass = sum(1 for a in AGENT_NAMES for m in MONTHS if swap_rwr_to_ren(AGENTS[a][m], 0.5)['NB'][1] >= NB_MIN_PREMIUM and swap_rwr_to_ren(AGENTS[a][m], 0.5)['REN'][1] >= REN_MIN_PREMIUM)
+
+    pass_rows = [
+        ('NB gate', f"{nb_real_pass}/24 ({nb_real_pass/24*100:.0f}%)", f"{nb_swap_pass}/24 ({nb_swap_pass/24*100:.0f}%)", "NB gate is achievable on today's behavior. Most agents earn NB bonus most months."),
+        ('REN gate', f"{ren_real_pass}/24 ({ren_real_pass/24*100:.0f}%)", f"{ren_swap_pass}/24 ({ren_swap_pass/24*100:.0f}%)", "REN gate is gated by today's almost-zero renewals. Once agents shift behavior, almost all months pass."),
+        ('RWR gate (needs both)', f"{rwr_real_pass}/24 ({rwr_real_pass/24*100:.0f}%)", f"{rwr_swap_pass}/24 ({rwr_swap_pass/24*100:.0f}%)", "RWR pay unlocks alongside REN. The lever is the behavior change."),
+    ]
+    for row in pass_rows:
+        for i, v in enumerate(row, 1):
+            c = ws.cell(row=r, column=i, value=v)
+            style_data(c)
+            if r % 2 == 0: c.fill = SUB_FILL
+        ws.row_dimensions[r].height = 36
         r += 1
     r += 1
 
