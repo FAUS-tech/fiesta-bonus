@@ -457,11 +457,85 @@ def build_executive_summary(wb):
     ws['A2'].font = Font(italic=True, size=10, color='666666')
     ws.merge_cells('A2:M2')
 
+    # Pre-compute totals for headline
+    head_real = {'cur': 0, 'a': 0, 'a_min': 0, 'b': 0, 'b_min': 0, 'c': 0, 'c_min': 0}
+    head_swap = {'cur': 0, 'a': 0, 'a_min': 0, 'b': 0, 'b_min': 0, 'c': 0, 'c_min': 0}
+    for agent in AGENT_NAMES:
+        for month in MONTHS:
+            real = AGENTS[agent][month]
+            swap = swap_rwr_to_ren(real, 0.5)
+            head_real['cur'] += current_bonus(real['NB'][0], real['RWR'][0])
+            head_swap['cur'] += current_bonus(swap['NB'][0], swap['RWR'][0])
+            ra = calc_proposal_a(real['NB'], real['RWR'], real['REN'])
+            sa = calc_proposal_a(swap['NB'], swap['RWR'], swap['REN'])
+            rb = calc_proposal_b(real['NB'], real['RWR'], real['REN'])
+            sb = calc_proposal_b(swap['NB'], swap['RWR'], swap['REN'])
+            rc = calc_proposal_c(real['NB'], real['RWR'], real['REN'])
+            sc = calc_proposal_c(swap['NB'], swap['RWR'], swap['REN'])
+            head_real['a']  += ra['paid'];  head_real['a_min']  += ra['paid_after_min']
+            head_swap['a']  += sa['paid'];  head_swap['a_min']  += sa['paid_after_min']
+            head_real['b']  += rb['paid'];  head_real['b_min']  += rb['paid_after_min']
+            head_swap['b']  += sb['paid'];  head_swap['b_min']  += sb['paid_after_min']
+            head_real['c']  += rc['paid'];  head_real['c_min']  += rc['paid_after_min']
+            head_swap['c']  += sc['paid'];  head_swap['c_min']  += sc['paid_after_min']
+
+    # HEADLINE block at top - real vs swap side-by-side for every plan
+    r = 4
+    ws.cell(row=r, column=1, value='HEADLINE - 4-MONTH TOTALS (6 agents)').font = SECTION_FONT
+    ws.cell(row=r, column=1).fill = SECTION_FILL
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=13)
+    r += 1
+
+    hh = ['Plan', 'REAL (today)', 'SWAP (50% RWR→REN)', 'Swap vs Real $', 'Swap vs Real %', 'Direction', '', '', '', '', '', '', '']
+    for i, h in enumerate(hh, 1):
+        if h: style_header(ws.cell(row=r, column=i, value=h))
+    r += 1
+
+    def signed_pct(real, swap):
+        if real == 0: return '+infinity' if swap > 0 else '0%'
+        return f"{(swap/real - 1)*100:+.1f}%"
+
+    head_rows = [
+        ('Current plan (today)', head_real['cur'], head_swap['cur'], head_swap['cur'] - head_real['cur'], signed_pct(head_real['cur'], head_swap['cur']), 'DROPS - the current plan punishes the behavior change'),
+        ('Proposal A - no minimum', head_real['a'], head_swap['a'], head_swap['a'] - head_real['a'], signed_pct(head_real['a'], head_swap['a']), 'GROWS - new plan rewards renewals'),
+        ('Proposal A - WITH $50k/$50k MIN', head_real['a_min'], head_swap['a_min'], head_swap['a_min'] - head_real['a_min'], signed_pct(head_real['a_min'], head_swap['a_min']), 'GROWS more than 2x - swap unlocks gates'),
+        ('Proposal B - no minimum', head_real['b'], head_swap['b'], head_swap['b'] - head_real['b'], signed_pct(head_real['b'], head_swap['b']), 'GROWS - coverage plan'),
+        ('Proposal B - WITH $50k/$50k MIN', head_real['b_min'], head_swap['b_min'], head_swap['b_min'] - head_real['b_min'], signed_pct(head_real['b_min'], head_swap['b_min']), 'GROWS - swap unlocks gates'),
+        ('Proposal C - no minimum', head_real['c'], head_swap['c'], head_swap['c'] - head_real['c'], signed_pct(head_real['c'], head_swap['c']), 'GROWS - REN parity'),
+        ('Proposal C - WITH $50k/$50k MIN', head_real['c_min'], head_swap['c_min'], head_swap['c_min'] - head_real['c_min'], signed_pct(head_real['c_min'], head_swap['c_min']), 'GROWS'),
+    ]
+    for row in head_rows:
+        for i, v in enumerate(row, 1):
+            c = ws.cell(row=r, column=i, value=v)
+            if i == 1:
+                style_data(c)
+                c.font = Font(bold=True)
+            elif i in (2, 3, 4):
+                style_dollar(c)
+            else:
+                style_data(c)
+            if 'Current' in row[0]: c.fill = CURRENT_FILL
+            elif 'Proposal A' in row[0]: c.fill = PROP_A_FILL
+            elif 'Proposal B' in row[0]: c.fill = PROP_B_FILL
+            elif 'Proposal C' in row[0]: c.fill = PROP_C_FILL
+        ws.row_dimensions[r].height = 24
+        r += 1
+
+    r += 1
+    ws.cell(row=r, column=1, value=(
+        "READ: Current plan drops in swap because it only rewards NB+RWR count. New plans grow in swap because they pay for renewals. "
+        "WITH MIN totals are smaller because no agent has $50k of REN premium today - until the renewal book is built, the gate stays closed. "
+        "That is the design: 'no bonus until you cover yourself.'"
+    )).alignment = Alignment(wrap_text=True)
+    ws.cell(row=r, column=1).font = Font(size=11, italic=True)
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=13)
+    ws.row_dimensions[r].height = 38
+    r += 2
+
     # Two scenario blocks: REAL, then 50% SWAP
     headers = ['Month', 'Agent', 'NB', 'RWR', 'REN', 'Current',
                'A no-min', 'A with min', 'B no-min', 'B with min', 'C no-min', 'C with min',
                'A-min vs Current']
-    r = 4
     ws.cell(row=r, column=1, value='SCENARIO 1: REAL DATA (Jan-Apr 2026)').font = SECTION_FONT
     ws.cell(row=r, column=1).fill = SECTION_FILL
     ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=13)
@@ -1371,13 +1445,33 @@ def build_safe_net_simple(wb):
     ws['A1'].font = TITLE_FONT
     ws.merge_cells('A1:F1')
 
-    ws['A2'] = "Safe net = the money the AGENCY actually has left after paying corporate and overhead. The bonus comes out of safe net, so it's the number we use to size what we can afford to pay."
+    ws['A2'] = ("Safe net = the commission the agency expects to KEEP after corporate royalty and overhead. "
+                "Bonus comes out of safe net, so the size of safe net controls how much bonus the agency can afford.")
     ws['A2'].font = Font(italic=True, size=11, color='1F4E78')
     ws.merge_cells('A2:F2')
 
     r = 4
-    # Walk-through with a single $1,000 policy at 25% collected
-    ws.cell(row=r, column=1, value='STEP-BY-STEP: A $1,000 policy, customer pays $250 down (25%), carrier commission 10%').font = SECTION_FONT
+    ws.cell(row=r, column=1, value='HOW COMMISSION ACTUALLY WORKS (this is the part most people get wrong)').font = SECTION_FONT
+    ws.cell(row=r, column=1).fill = SECTION_FILL
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=6)
+    r += 1
+
+    facts = [
+        ('The carrier pays the agency commission on the WRITTEN premium, NOT just the down payment.', 'Example: $1,500 policy, 10% commission. Agency gets $150 commission upfront, even though the customer only paid $150 down.'),
+        ('If the customer stops paying, the carrier charges back the unearned commission.', 'Same example: customer pays only $150, then walks. Carrier reverses ~$135 of the $150 commission. Net kept: ~$15.'),
+        ('So in practice the commission we actually KEEP is roughly equal to "commission on what was collected".', 'That is why the workbook computes safe net using collected x commission rate - the math nets out the same as written-comm minus chargeback.'),
+        ('The higher the % collected at the down payment, the lower the chance of cancellation, the less chargeback.', 'PIF (paid in full) = essentially no chargeback risk. 50% down = much less chargeback than 15% down. That is why the kicker exists.'),
+    ]
+    for h, t in facts:
+        ws.cell(row=r, column=1, value=h).font = Font(bold=True, size=11)
+        c = ws.cell(row=r, column=2, value=t)
+        c.alignment = Alignment(wrap_text=True, vertical='top')
+        ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=6)
+        ws.row_dimensions[r].height = 38
+        r += 1
+
+    r += 1
+    ws.cell(row=r, column=1, value='STEP-BY-STEP: $1,500 policy, customer pays $150 down (10% collected), 10% carrier commission').font = SECTION_FONT
     ws.cell(row=r, column=1).fill = SECTION_FILL
     ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=6)
     r += 1
@@ -1388,12 +1482,15 @@ def build_safe_net_simple(wb):
     r += 1
 
     steps = [
-        ('1', 'Customer pays down payment', '$250 collected', '$250.00', '$250.00 in our hands', 'This is the money the agency actually has. The other $750 is on a payment plan.'),
-        ('2', 'Carrier pays commission on what was collected', '$250 x 10% comm', '$25.00', '$25.00 of commission earned', 'Carriers pay 8-15% on collected premium. We use 11% as the blended rate.'),
-        ('3', 'Royalty goes to corporate', '$25 x 17.5% royalty', '-$4.38', '$20.63 left after royalty', 'Every dollar of commission gives up 17.5 cents to the franchise.'),
-        ('4', 'Overhead reserve (rent, payroll, tech, admin, bank fees)', '$20.63 x 40% overhead', '-$8.25', '$12.38 SAFE NET', 'This is the conservative estimate of what every commission dollar costs to keep the doors open.'),
-        ('5', 'Bonus review threshold', '$12.38 x 40% (soft cap)', '$4.95 cap', '$4.95 is the most we want to spend on bonus for this one policy in a month', "If the bonus target on this policy is above $4.95, ownership flags it for review. It does NOT auto-cut."),
-        ('6', 'What the agency keeps', '$12.38 - actual bonus paid', 'Variable', 'Profit + taxes', "Whatever is left of safe net after bonus is real profit. That's why ownership cares about the safe net number."),
+        ('1', 'Policy is written', 'Premium $1,500', '$1,500', '$0 in our pocket yet', 'The customer is on the hook for $1,500. Most of it is owed on payments.'),
+        ('2', 'Carrier pays commission on WRITTEN premium', '$1,500 x 10%', '$150', '$150 advance commission', 'This is an ADVANCE. The carrier expects to collect the full $1,500.'),
+        ('3', 'Customer pays $150 down (10% collected)', '$150 cash in', '$150', '$150 cash + $150 commission', 'Down payment is just the customer paying their bill. Not commission.'),
+        ('4', 'If customer pays the rest, no chargeback', 'Best case', 'Keep $150', '$150 commission kept', 'Carrier earned the full premium, we keep the full commission. Renewal still pays.'),
+        ('5', 'If customer cancels after only paying $150', 'Carrier reverses unearned commission', '-$135', '$15 commission kept', 'Carrier earned 10% of the $150 collected, the other $135 of commission is reversed.'),
+        ('6', 'EXPECTED commission ~= collected x rate', '$150 collected x 10%', '$15 expected to keep', 'Use this for safe net', 'That is why the workbook uses collected x rate. It is the cash we EXPECT to retain.'),
+        ('7', 'Royalty to corporate (17.5%)', '$15 x 17.5%', '-$2.63', '$12.38 retained', 'Franchise royalty comes off the top.'),
+        ('8', 'Overhead reserve (40%)', '$12.38 x 40%', '-$4.95', '$7.43 SAFE NET', 'Rent, tech, admin, bank fees, agent salaries. Conservative reserve.'),
+        ('9', 'Bonus review threshold (40% of safe net)', '$7.43 x 40%', '$2.97 review cap', 'Bonus targets above $2.97 on this policy get flagged for ownership review.', "Soft cap, not auto-cut."),
     ]
     for row in steps:
         for i, v in enumerate(row, 1):
@@ -1404,17 +1501,7 @@ def build_safe_net_simple(wb):
         r += 1
 
     r += 1
-    ws.cell(row=r, column=1, value='SAME MATH AT THE MONTHLY LEVEL').font = SECTION_FONT
-    ws.cell(row=r, column=1).fill = SECTION_FILL
-    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=6)
-    r += 1
-    ws.cell(row=r, column=1, value="In the workbook the SAME formula is applied at the agent-month level. Add up everything the agent collected that month (NB + RWR + REN), multiply by 11% carrier commission, subtract 17.5% royalty, subtract 40% overhead. The result is that agent's monthly safe net. The bonus is judged against THAT number.").alignment = Alignment(wrap_text=True)
-    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=6)
-    ws.row_dimensions[r].height = 50
-    r += 2
-
-    # Worked example: Abel Guaina January
-    ws.cell(row=r, column=1, value="WORKED EXAMPLE - Abel Guaina, January 2026").font = SECTION_FONT
+    ws.cell(row=r, column=1, value='WORKED EXAMPLE - Abel Guaina, January 2026 (full month)').font = SECTION_FONT
     ws.cell(row=r, column=1).fill = SECTION_FILL
     ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=6)
     r += 1
@@ -1424,40 +1511,45 @@ def build_safe_net_simple(wb):
         if h: style_header(ws.cell(row=r, column=i, value=h))
     r += 1
 
-    # Compute Abel Jan numbers fresh
     d = AGENTS['Abel Guaina']['January']
+    total_written = d['NB'][1] + d['RWR'][1] + d['REN'][1]
     total_col = d['NB'][2] + d['RWR'][2] + d['REN'][2]
-    gross = total_col * BLENDED_COMM
-    after_royalty = gross * (1 - ROYALTY)
+    advance = total_written * BLENDED_COMM
+    expected_retained = total_col * BLENDED_COMM
+    after_royalty = expected_retained * (1 - ROYALTY)
     safe_net = after_royalty * (1 - OVERHEAD)
     cap = safe_net * CAP_STANDARD
 
     abel_steps = [
-        ('1. Total collected', 'NB col + RWR col + REN col', f"${d['NB'][2]:,.0f} + ${d['RWR'][2]:,.0f} + ${d['REN'][2]:,.0f}", f"${total_col:,.2f}", "Money Abel's customers actually paid in January"),
-        ('2. Gross commission', 'Collected x 11% blended comm', f"${total_col:,.2f} x 0.11", f"${gross:,.2f}", "Commission earned from carriers"),
-        ('3. After royalty', 'Gross x (1 - 17.5%)', f"${gross:,.2f} x 0.825", f"${after_royalty:,.2f}", "After corporate royalty"),
-        ('4. SAFE NET', 'After-royalty x (1 - 40% overhead)', f"${after_royalty:,.2f} x 0.60", f"${safe_net:,.2f}", "What the agency truly has available for bonus + profit + taxes from Abel's book"),
-        ('5. Review threshold (40%)', 'Safe net x 40%', f"${safe_net:,.2f} x 0.40", f"${cap:,.2f}", "Bonus targets above this number get flagged for ownership review"),
-        ('6. Proposal A target paid', "(from rules)", "Abel's January NB+REN+RWR targets", "$252.00", "$252 is 36% of safe net - under the 40% threshold, no flag."),
-        ('7. Proposal B target paid', "(from rules)", "Bigger because $10 NB base", "$399.46", "$399 is 57% of safe net - ABOVE 40%, flagged for review."),
+        ('1. Total written premium', 'NB + RWR + REN written', f"${d['NB'][1]:,.0f} + ${d['RWR'][1]:,.0f} + ${d['REN'][1]:,.0f}", f"${total_written:,.2f}", "What Abel sold and renewed this month"),
+        ('2. Carrier commission ADVANCE', 'Written x 11% blended', f"${total_written:,.2f} x 0.11", f"${advance:,.2f}", "Carriers paid us this much commission UPFRONT"),
+        ('3. Total collected', 'Down payments + installments collected', f"${d['NB'][2]:,.0f} + ${d['RWR'][2]:,.0f} + ${d['REN'][2]:,.0f}", f"${total_col:,.2f}", "Cash that actually came in from customers"),
+        ('4. Expected retained commission', 'Collected x 11% (chargeback math)', f"${total_col:,.2f} x 0.11", f"${expected_retained:,.2f}", "Net of expected chargebacks. Lower than the advance."),
+        ('5. After royalty', 'Retained x (1 - 17.5%)', f"${expected_retained:,.2f} x 0.825", f"${after_royalty:,.2f}", "After 17.5% corporate royalty"),
+        ('6. SAFE NET', 'After-royalty x (1 - 40% overhead)', f"${after_royalty:,.2f} x 0.60", f"${safe_net:,.2f}", "Money truly available to spend on bonus + profit + taxes. Overhead reserve covers salaries/rent/tech/admin."),
+        ('7. Review threshold', 'Safe net x 40%', f"${safe_net:,.2f} x 0.40", f"${cap:,.2f}", "Bonus targets above this trigger ownership review (soft flag)"),
+        ('8. Proposal A target paid', '(from plan rules)', "Abel's January NB/REN/RWR", "$252.00", f"That is {252/safe_net*100:.0f}% of safe net - under threshold, no flag"),
+        ('9. Proposal B target paid', '(from plan rules)', "Bigger because $10 NB base", "$399.46", f"That is {399.46/safe_net*100:.0f}% of safe net - flagged for review"),
     ]
     for row in abel_steps:
         for i, v in enumerate(row, 1):
             c = ws.cell(row=r, column=i, value=v)
             style_data(c)
             if r % 2 == 0: c.fill = SUB_FILL
-        ws.row_dimensions[r].height = 32
+        ws.row_dimensions[r].height = 36
         r += 1
 
     r += 1
-    ws.cell(row=r, column=1, value="KEY POINT").font = SECTION_FONT
+    ws.cell(row=r, column=1, value='KEY TAKEAWAYS').font = SECTION_FONT
     ws.cell(row=r, column=1).fill = SECTION_FILL
     ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=6)
     r += 1
     keys = [
-        "Safe net is NOT the agency's revenue. Revenue is the total commission ($25 in the example). Safe net is what's left after royalty and overhead reserve - that's where the bonus has to come from.",
-        "The bigger the COLLECTED amount, the bigger the safe net, the more room for bonus. That is why the collected-% kicker exists - it pushes agents toward bigger down payments and PIF, which makes the safe net bigger.",
-        "Under TODAY'S plan, bonuses paid total roughly 57% of safe net. That is too high. All three proposals come in below that. The plain-English message: 'today we are giving away more than half of what is left after rent and royalty. The new plans correct that.'",
+        "Commission is an ADVANCE on written premium. We keep ~commission-on-collected once chargebacks settle out.",
+        "Down payment / PIF do NOT change the commission RATE. They reduce CHARGEBACK risk, which makes more of the advance permanent.",
+        "Safe net is what is LEFT after royalty and overhead reserve. It is the pool for bonus + agency profit + taxes.",
+        f"Under TODAY'S plan, the 6 agents collectively receive ${12220:,.0f} of bonus on ${21285:,.0f} of safe net = ~57% of safe net. That is heavy. All three new proposals come in well below 57%.",
+        "The 40% review threshold is a soft flag, not an auto-cut. The 90-day chargeback on the bonus itself is the real profit shield.",
     ]
     for t in keys:
         c = ws.cell(row=r, column=1, value=t)
@@ -1467,7 +1559,7 @@ def build_safe_net_simple(wb):
         ws.row_dimensions[r].height = 40
         r += 1
 
-    set_col_widths(ws, [22, 32, 26, 22, 38, 14])
+    set_col_widths(ws, [26, 32, 28, 22, 38, 14])
 
 
 def build_minimum_requirements(wb):
@@ -1484,6 +1576,51 @@ def build_minimum_requirements(wb):
     ws.merge_cells('A2:J2')
 
     r = 4
+    ws.cell(row=r, column=1, value='WHY THESE NUMBERS - SALARY COVERAGE').font = SECTION_FONT
+    ws.cell(row=r, column=1).fill = SECTION_FILL
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=10)
+    r += 1
+
+    ws.cell(row=r, column=1, value=(
+        "The minimum should at LEAST cover the agent's salary cost to the agency. "
+        "Below the minimum, the agent's production has not yet paid for themselves - bonus would come out of owner's profit. "
+        "The $50,000 NB + $50,000 REN gates are calibrated to roughly that break-even point."
+    )).alignment = Alignment(wrap_text=True, vertical='top')
+    ws.cell(row=r, column=1).font = Font(size=11)
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=10)
+    ws.row_dimensions[r].height = 40
+    r += 2
+
+    sal_headers = ['Step', 'Math', 'Number', 'What it means', '', '', '', '', '', '']
+    for i, h in enumerate(sal_headers, 1):
+        if h: style_header(ws.cell(row=r, column=i, value=h))
+    r += 1
+
+    # At $50k NB + $50k REN = $100k written. At typical 25% collection blend = $25k collected.
+    written_floor = NB_MIN_PREMIUM + REN_MIN_PREMIUM
+    typical_coll_rate = 0.25
+    collected_floor = written_floor * typical_coll_rate
+    comm_at_floor = collected_floor * BLENDED_COMM
+    after_roy_floor = comm_at_floor * (1 - ROYALTY)
+    typical_salary = 2500  # entry-level Florida P&C agent base, monthly
+
+    sal_steps = [
+        ('1', 'NB minimum + REN minimum', f"${NB_MIN_PREMIUM:,} + ${REN_MIN_PREMIUM:,} = ${written_floor:,}", "Total written premium needed to clear both gates"),
+        ('2', 'x typical collection rate', f"${written_floor:,} x {typical_coll_rate:.0%}", f"= ${collected_floor:,.0f} collected"),
+        ('3', 'x 11% blended commission', f"${collected_floor:,.0f} x 11%", f"= ${comm_at_floor:,.0f} expected commission"),
+        ('4', 'x (1 - 17.5% royalty)', f"${comm_at_floor:,.0f} x 0.825", f"= ${after_roy_floor:,.0f} after royalty"),
+        ('5', 'vs typical agent salary cost', f"${after_roy_floor:,.0f} vs ${typical_salary:,}/mo", f"At the floor, agent contributes ~${after_roy_floor:,.0f}. Roughly covers an entry-level salary."),
+        ('6', 'Therefore', '-', "Above this floor, agent's production has paid for itself - bonus comes out of profit, not owner's pocket. Below this floor, no bonus."),
+    ]
+    for row in sal_steps:
+        for i, v in enumerate(row, 1):
+            c = ws.cell(row=r, column=i, value=v)
+            style_data(c)
+            if r % 2 == 0: c.fill = SUB_FILL
+        ws.row_dimensions[r].height = 32
+        r += 1
+    r += 1
+
     ws.cell(row=r, column=1, value='RULES').font = SECTION_FONT
     ws.cell(row=r, column=1).fill = SECTION_FILL
     ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=10)
