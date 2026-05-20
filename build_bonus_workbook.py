@@ -1468,7 +1468,7 @@ def build():
     build_manual_tracker(wb)
     build_assumptions(wb)
 
-    out = '/home/user/fiesta-bonus/output/bonus_proposal_v2_premium_vs_coverage.xlsx'
+    out = '/home/user/fiesta-bonus/output/Bonus_Proposal_FIXED_Premium_vs_Coverage.xlsx'
     wb.save(out)
     print(f"Saved: {out}")
     return out
