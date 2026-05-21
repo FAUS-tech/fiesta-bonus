@@ -132,21 +132,20 @@ def kicker_label(collected_pct):
 
 
 def nb_premium_tier(avg_prem):
-    """Proposal A NB tier (rates raised so FLIP scenario matches today's pay)."""
-    if avg_prem < 1200: return 7,  "Under $1,200"
-    if avg_prem < 1800: return 10, "$1,200-$1,799"
-    if avg_prem < 2200: return 13, "$1,800-$2,199"
-    if avg_prem < 3000: return 16, "$2,200-$2,999"
-    # $3,000+: $16 + $3 per $1k, cap $35
-    val = min(16 + (avg_prem - 3000) / 1000 * 3, 35)
+    """Proposal A NB tier."""
+    if avg_prem < 1200: return 6,  "Under $1,200"
+    if avg_prem < 1800: return 8,  "$1,200-$1,799"
+    if avg_prem < 2200: return 11, "$1,800-$2,199"
+    if avg_prem < 3000: return 13, "$2,200-$2,999"
+    val = min(13 + (avg_prem - 3000) / 1000 * 2, 28)
     return val, "$3,000+"
 
 
 def ren_premium_tier(avg_prem):
     """Proposal A REN tier."""
-    if avg_prem < 1200: return 6, "Under $1,200"
-    if avg_prem < 1800: return 7, "$1,200-$1,799"
-    return 9, "$1,800+"
+    if avg_prem < 1200: return 5, "Under $1,200"
+    if avg_prem < 1800: return 6, "$1,200-$1,799"
+    return 7, "$1,800+"
 
 
 def calc_proposal_a(nb, rwr, ren):
@@ -213,12 +212,12 @@ def calc_proposal_b(nb, rwr, ren):
     ren_col_pct = ren_col / ren_p if ren_p else 0
     rwr_col_pct = rwr_col / rwr_p if rwr_p else 0
 
-    nb_base = nb_c * 13
-    nb_liability = nb_c * LIAB_ADOPTION_NB * 7
+    nb_base = nb_c * 11
+    nb_liability = nb_c * LIAB_ADOPTION_NB * 6
     nb_target = (nb_base + nb_liability) * kicker(nb_col_pct)
 
-    ren_base = ren_c * 8
-    ren_liability = ren_c * LIAB_ADOPTION_REN * 4
+    ren_base = ren_c * 7
+    ren_liability = ren_c * LIAB_ADOPTION_REN * 3
     ren_target = (ren_base + ren_liability) * kicker(ren_col_pct)
 
     rwr_target = rwr_c * 2 * kicker(rwr_col_pct)
@@ -403,27 +402,46 @@ def set_col_widths(ws, widths):
 # SHEET BUILDERS
 # ============================================================================
 def build_readme(wb):
-    ws = wb.create_sheet('README')
-    ws['A1'] = 'Bonus Proposal Workbook - How to Use'
+    ws = wb.create_sheet('README - START HERE')
+    ws['A1'] = 'Fiesta Bonus Plan Proposal - START HERE'
     ws['A1'].font = TITLE_FONT
     ws.merge_cells('A1:F1')
 
     rows = [
         ('', ''),
-        ('Purpose', 'Two clean, separated bonus proposals for ownership decision. Plus a third optional idea.'),
+        ('===== TL;DR (read this first) =====', ''),
+        ('What this is', 'A proposal for a new agent bonus plan. The current plan rewards REWRITING customers (bad for retention). The new plan rewards writing new business AND keeping customers (renewing) AND collecting more money up-front AND selling good coverage.'),
+        ('Bottom line (4-month total, 6 agents)', 'TODAY: $12,220 paid out under current plan. RECOMMENDED Plan B with $35k/$20k minimums: $3,766 today (less, because agents still rewriting), $7,578 if half the rewrites become renewals, $10,545 if all rewrites had been renewals (86% of today). The new plan pays LESS for the wrong behavior and CLOSE TO TODAY for the right behavior.'),
+        ('Recommendation', 'Plan B (Coverage-Based) with $35,000 NB / $20,000 REN monthly minimums. Pilot 90 days side-by-side with the current plan, pay agents the HIGHER of the two during the pilot.'),
+        ('How to read the rest', 'Start with Executive Summary -> Plan B Rules -> Agent Examples. Use Glossary below to look up terms (NB, RWR, REN, BI, UM, PIF, FLIP, SWAP, etc.).'),
         ('', ''),
-        ('Proposal A - Premium-Based', 'Bonus is tiered by WRITTEN PREMIUM, then a COLLECTED-% kicker is applied. No coverage add-ons. Clean and self-balancing on premium quality.'),
-        ('Proposal B - Coverage-Based (RECOMMENDED)', 'Bonus is per-policy by COVERAGE TYPE (PIP/PD or PIP+Comp/Coll = $10 NB base; BI+UM liability bundle = +$5). No premium tiers. Same collected kicker. UM cannot be added without BI - so the bundle is paid as one $5 add-on.'),
+        ('===== GLOSSARY =====', ''),
+        ('NB', 'NEW BUSINESS - first time the customer is on the books. Brand new policy.'),
+        ('RWR', 'REWRITE - cancel an existing policy and write a NEW one (usually at a different carrier). Customer ends up with a brand new 6-month term. Churns the book.'),
+        ('REN', 'RENEWAL - the existing policy renews at the SAME carrier. Customer stays put.'),
+        ('PIF', 'PAID IN FULL - customer pays the entire premium upfront. Zero chargeback risk.'),
+        ('BI', 'BODILY INJURY liability - pays the OTHER person\'s injuries if your customer caused the accident.'),
+        ('UM', 'UNINSURED MOTORIST - pays YOUR customer\'s injuries if hit by an uninsured driver. Cannot be added without BI.'),
+        ('PIP', 'PERSONAL INJURY PROTECTION - covers your customer\'s own medical bills. Required in FL.'),
+        ('PD', 'PROPERTY DAMAGE liability - damage your customer caused to OTHER property. Required in FL.'),
+        ('Comp / Coll', 'COMPREHENSIVE / COLLISION - damage to your customer\'s OWN car. Usually required by lienholders.'),
+        ('Collected %', 'The % of total premium the customer actually paid. Down payment / total = collected %.'),
+        ('Safe Net', 'Money left in the agency after corporate royalty (21%) and overhead (30%). The bonus comes out of safe net.'),
+        ('Chargeback', 'If a policy cancels mid-term, the carrier reverses unearned commission. Bonus on that policy is also reversed if cancel happens within 90 days.'),
+        ('Kicker', 'Bonus multiplier based on collected %. Higher down payment = bigger multiplier.'),
+        ('Minimum / Gate', 'A monthly premium threshold the agent must clear to earn that bonus line.'),
+        ('FLIP scenario', 'Hypothetical: "what if all rewrites had been renewals?" The strongest behavior-change test.'),
+        ('SWAP scenario', 'Hypothetical: "what if half the rewrites became renewals?" A realistic transition target.'),
         ('', ''),
-        ('Important Constraint', 'Do NOT mix Proposal A and Proposal B. They are separate models. Coverage bonuses do not exist in A. Premium tiers do not exist in B.'),
+        ('===== THE TWO PROPOSALS =====', ''),
+        ('Proposal A - Premium-Based', 'Bonus is tiered by WRITTEN PREMIUM. Bigger premium = bigger per-policy bonus. No coverage add-ons. Simple payroll math, lower cost.'),
+        ('Proposal B - Coverage-Based (RECOMMENDED)', 'Bonus is per-policy by COVERAGE TYPE. $11 NB base + $6 if BI+UM bundle present. No premium tiers. Same collected kicker as A. Best motivator and closest to today\'s pay when behavior shifts.'),
         ('', ''),
-        ('Why Renewals Now Pay Separately', 'The current plan counts NB and RWR together toward a single threshold and pays nothing for renewals. That pushes agents to REWRITE rather than RENEW, which costs the customer time and the agency loyalty/persistency. The new plans pay renewals separately and keep rewrites flat at $2 so the math no longer rewards churning the book.'),
-        ('', ''),
-        ('Why the 50% Swap Examples', 'Today the agents are mostly rewriting. To prove that the new plan REWARDS the shift to renewals, every agent example is also run with 50% of their rewrites converted into renewals (same premium, same collected). That is the realistic mid-term target.'),
-        ('', ''),
-        ('Profitability Protection (ALL proposals)', 'Bonus PAID = the calculated TARGET (no automatic hard cap). Safe net = collected commission x (1 - 0.175 royalty) x (1 - 0.40 overhead). Ownership REVIEWS any month where target exceeds 40% of safe net (soft flag). Current plan pays ~57% of safe net - all three proposals are cheaper than that.'),
-        ('Chargeback (ALL proposals)', '100% of the paid bonus is reversed if the policy cancels or rewrites within 90 days of effective date. THIS is the primary profit protection.'),
-        ('', ''),
+        ('===== KEY MECHANICS =====', ''),
+        ('Important Constraint', 'Do NOT mix Plan A and Plan B. They are separate models. Pick one.'),
+        ('Why Renewals Now Pay Separately', 'Today\'s plan pays nothing for renewals - so agents have no incentive to keep the customer. The new plans pay $5-$11 per renewal (REN line) so retention is finally rewarded.'),
+        ('Why the 50%-Swap and 100%-Flip Examples', 'Today agents are mostly rewriting. To prove the new plan rewards the shift to renewing, each agent example is ALSO run with: (a) 50% of rewrites converted to renewals, and (b) 100% of rewrites flipped to renewals. Same dollars, just reclassified.'),
+        ('Profit Protection', 'Bonus paid = target (no automatic cap). Three protections instead: (1) MINIMUM REQUIREMENTS gate each bonus line, (2) 40% REVIEW THRESHOLD flags outlier months for ownership, (3) 90-DAY CHARGEBACK reverses bonus on policies that cancel/rewrite within 90 days.'),
         ('Minimum Requirement (NEW)', f'Bonus is GATED by monthly premium: NB premium >= ${NB_MIN_PREMIUM:,} AND REN premium >= ${REN_MIN_PREMIUM:,}. Pass the NB gate to earn NB bonus. Pass the REN gate to earn REN bonus. Pass BOTH to earn the RWR bonus (RWR has no own minimum). This replaces today\'s 35-policy NB+RWR floor and points agents at the renewal book.'),
         ('', ''),
         ('Sheet Map', ''),
@@ -459,12 +477,13 @@ def build_readme(wb):
 
 def build_executive_summary(wb):
     ws = wb.create_sheet('Executive Summary')
-    ws['A1'] = 'Executive Summary - Current vs Proposal A vs Proposal B'
+    ws['A1'] = 'Executive Summary - Current vs Plan A vs Plan B'
     ws['A1'].font = TITLE_FONT
     ws.merge_cells('A1:M1')
 
-    ws['A2'] = (f'Six agents, four months. Each proposal is shown two ways: WITHOUT minimums (pure target) and WITH '
-                f'the proposed minimums (NB premium >= ${NB_MIN_PREMIUM:,}/mo AND REN premium >= ${REN_MIN_PREMIUM:,}/mo; RWR paid only when BOTH gates pass).')
+    ws['A2'] = (f'Six agents (Abel, Dialinerys, Melissa, Flavia, Thalia, Monica) over four months (Jan-Apr 2026). '
+                f'Each plan is shown two ways: WITHOUT minimums (calculated target) and WITH the recommended minimums '
+                f'(NB premium >= ${NB_MIN_PREMIUM:,}/mo AND REN premium >= ${REN_MIN_PREMIUM:,}/mo; RWR paid only when BOTH gates pass).')
     ws['A2'].font = Font(italic=True, size=10, color='666666')
     ws.merge_cells('A2:M2')
 
@@ -700,17 +719,17 @@ def build_proposal_a(wb):
     r += 1
 
     rows = [
-        ('NB', 'Written premium under $1,200', '$7', 'Low-premium NB earns base.', '$1,000 NB', '$7', 'Before kicker'),
-        ('NB', '$1,200-$1,799', '$10', 'Medium NB.', '$1,500 NB', '$10', 'Before kicker'),
-        ('NB', '$1,800-$2,199', '$13', 'Better premium NB.', '$2,000 NB', '$13', 'Before kicker'),
-        ('NB', '$2,200-$2,999', '$16', 'Strong premium NB.', '$2,500 NB', '$16', 'Before kicker'),
-        ('NB', '$3,000+', '$16 + $3 per $1k over $3k, cap $35', 'Commercial / high-premium upside.', '$4,500 NB', '$16 + $4.50 = $20.50', 'Before kicker'),
-        ('REN', 'Under $1,200', '$6', 'Renewals are PAID separately. Below NB on purpose.', '$1,000 REN', '$6', 'Before kicker'),
-        ('REN', '$1,200-$1,799', '$7', 'Medium REN.', '$1,500 REN', '$7', 'Before kicker'),
-        ('REN', '$1,800+', '$9', 'High REN.', '$2,000 REN', '$9', 'Before kicker'),
+        ('NB', 'Written premium under $1,200', '$6', 'Low-premium NB earns base.', '$1,000 NB', '$6', 'Before kicker'),
+        ('NB', '$1,200-$1,799', '$8', 'Medium NB.', '$1,500 NB', '$8', 'Before kicker'),
+        ('NB', '$1,800-$2,199', '$11', 'Better premium NB.', '$2,000 NB', '$11', 'Before kicker'),
+        ('NB', '$2,200-$2,999', '$13', 'Strong premium NB.', '$2,500 NB', '$13', 'Before kicker'),
+        ('NB', '$3,000+', '$13 + $2 per $1k over $3k, cap $28', 'Commercial / high-premium upside.', '$4,500 NB', '$13 + $3 = $16', 'Before kicker'),
+        ('REN', 'Under $1,200', '$5', 'Renewals are PAID separately. Below NB on purpose.', '$1,000 REN', '$5', 'Before kicker'),
+        ('REN', '$1,200-$1,799', '$6', 'Medium REN.', '$1,500 REN', '$6', 'Before kicker'),
+        ('REN', '$1,800+', '$7', 'High REN.', '$2,000 REN', '$7', 'Before kicker'),
         ('RWR', 'Any rewrite', '$2 flat', 'Rewrites are paid but DO NOT drive the bonus.', 'Any RWR', '$2', 'No kicker stacking by tier'),
         ('Collected Kicker', 'Applies to the per-policy pay', '+10% / +15% / +20% / +25%', '15-24% / 25-49% / 50-99% / 100% (PIF)', '$10 target x 25% collected', '$10 x 1.15 = $11.50', 'Same logic both A and B'),
-        ('PIF Add (when paid in full)', 'NB under $3,000 = +$11 / NB $3,000+ = +$15 / REN PIF = +$7', 'Per-policy add-on', 'PIF means cash collected upfront - lower risk.', '$2,500 NB PIF', '$16 base + $11 PIF = $27', 'Manager verifies PIF'),
+        ('PIF Add (when paid in full)', 'NB under $3,000 = +$9 / NB $3,000+ = +$13 / REN PIF = +$5', 'Per-policy add-on', 'PIF means cash collected upfront - lower risk.', '$2,500 NB PIF', '$13 base + $9 PIF = $22', 'Manager verifies PIF'),
         ('Minimum Requirements', f'NB premium >= ${NB_MIN_PREMIUM:,}/mo AND REN premium >= ${REN_MIN_PREMIUM:,}/mo', 'Gates each bonus line', 'Below the gate, that line pays $0.', 'NB $20k written month', 'NB bonus = $0', 'RWR needs BOTH gates'),
         ('Review Threshold (soft cap)', 'Target > 40% of safe net', 'Flag for ownership review', 'Catches low-collection months. Does NOT auto-reduce pay.', 'Safe net $200, target $80 (40%)', 'Pay $80, flag for review', '40% / 55% PIF'),
         ('Chargeback (PRIMARY PROTECTION)', '90 days', '100% reversal', 'If a paid policy cancels or rewrites within 90 days, full bonus is reversed.', '$12 paid Jan, cancels Mar', '-$12 in next payroll', 'Required'),
@@ -761,15 +780,15 @@ def build_proposal_b(wb):
     r += 1
 
     rows = [
-        ('NB Base Coverage', 'PIP/PD only OR PIP + Comp/Coll', '$13 flat', 'Either FL minimum or full coverage qualifies for the base.', 'PIP+PD NB or PIP+Comp+Coll NB', '$13', 'Per policy, before kicker'),
-        ('NB Liability Add', 'BI + UM bundled together', '+$7', 'Adds liability. Bundled because UM cannot exist without BI in FL.', 'NB with BI + UM', '$13 + $7 = $20', 'Bundle only - see below'),
-        ('NB - BI ALONE', 'BI present but NO UM', '$0 add (base only)', 'Does not earn the liability bundle. Customer is still partially exposed.', 'NB with BI no UM', '$13 base only', 'Manager verifies'),
+        ('NB Base Coverage', 'PIP/PD only OR PIP + Comp/Coll', '$11 flat', 'Either FL minimum or full coverage qualifies for the base.', 'PIP+PD NB or PIP+Comp+Coll NB', '$11', 'Per policy, before kicker'),
+        ('NB Liability Add', 'BI + UM bundled together', '+$6', 'Adds liability. Bundled because UM cannot exist without BI in FL.', 'NB with BI + UM', '$11 + $6 = $17', 'Bundle only - see below'),
+        ('NB - BI ALONE', 'BI present but NO UM', '$0 add (base only)', 'Does not earn the liability bundle. Customer is still partially exposed.', 'NB with BI no UM', '$11 base only', 'Manager verifies'),
         ('NB - UM ALONE', 'Not possible', 'Not applicable', 'UM cannot be issued without BI per FL rules. Bundle exists for this reason.', '-', '-', 'Carrier system blocks this'),
-        ('REN Base Coverage', 'Same coverage logic as NB', '$8 flat', 'Renewals paid for the first time, but below NB.', 'Any REN', '$8', 'Before kicker'),
-        ('REN Liability Add', 'BI + UM bundled', '+$4', 'Same bundle logic, smaller dollar amount since the coverage already existed.', 'REN with BI + UM', '$8 + $4 = $12', 'Manager verifies'),
+        ('REN Base Coverage', 'Same coverage logic as NB', '$7 flat', 'Renewals paid for the first time, but below NB.', 'Any REN', '$7', 'Before kicker'),
+        ('REN Liability Add', 'BI + UM bundled', '+$3', 'Same bundle logic, smaller dollar amount since the coverage already existed.', 'REN with BI + UM', '$7 + $3 = $10', 'Manager verifies'),
         ('RWR', 'Any rewrite', '$2 flat', 'No coverage stacking. Rewrites are intentionally small.', 'Any RWR', '$2', 'No bundle on rewrites'),
-        ('PIF Add', 'Policy paid in full', '+$11 NB / +$15 high NB / +$7 REN', 'Cash upfront earns extra.', '$2,500 NB PIF + BI/UM', '$13 + $7 + $11 = $31', 'Manager verifies'),
-        ('Collected Kicker', 'Same as Proposal A', '+10% / +15% / +20% / +25%', '15-24% / 25-49% / 50-99% / 100%', '$20 target at 25% collected', '$20 x 1.15 = $23.00', 'Identical kicker logic'),
+        ('PIF Add', 'Policy paid in full', '+$9 NB / +$13 high NB / +$5 REN', 'Cash upfront earns extra.', '$2,500 NB PIF + BI/UM', '$11 + $6 + $9 = $26', 'Manager verifies'),
+        ('Collected Kicker', 'Same as Proposal A', '+10% / +15% / +20% / +25%', '15-24% / 25-49% / 50-99% / 100%', '$17 target at 25% collected', '$17 x 1.15 = $19.55', 'Identical kicker logic'),
         ('Minimum Requirements', f'NB premium >= ${NB_MIN_PREMIUM:,}/mo AND REN premium >= ${REN_MIN_PREMIUM:,}/mo', 'Gates each bonus line', 'Below the gate, that line pays $0.', 'NB $20k written month', 'NB bonus = $0', 'RWR needs BOTH gates'),
         ('Review Threshold (soft cap)', 'Target > 40% of safe net', 'Flag for ownership review', 'Same as Proposal A. Does NOT auto-reduce.', 'Safe net $200, target $80 (40%)', 'Pay $80, flag for review', '40% / 55% PIF'),
         ('Chargeback (PRIMARY PROTECTION)', '90 days', '100% reversal', 'Cancel or rewrite inside 90 days = full bonus reversed.', '$15 paid Jan, cancels Mar', '-$15 in next payroll', 'Required'),
@@ -873,13 +892,13 @@ def build_worked_examples(wb):
     r += 1
 
     examples = [
-        ('Basic FL NB - PIP/PD only',          'NB', 1000, 'PIP+PD',           '25%', 'Counts toward tier',  '$7 x 1.15 = $8.05',              '$13 x 1.15 = $14.95',                'B pays more - coverage = money, even at low premium.'),
-        ('Full Coverage NB - no liability',    'NB', 1500, 'PIP+PD+Comp+Coll', '25%', 'Counts toward tier',  '$10 x 1.15 = $11.50',            '$13 x 1.15 = $14.95',                'B pays base only (no BI+UM).'),
-        ('Full Coverage + Liability NB',       'NB', 2000, 'PIP+PD+CC+BI+UM',  '25%', 'Counts toward tier',  '$13 x 1.15 = $14.95',            '($13+$7) x 1.15 = $23.00',           'B clearly wins because liability bundle adds $7.'),
-        ('NB with BI ALONE (no UM)',           'NB', 2000, 'PIP+PD+BI no UM',  '25%', 'Counts toward tier',  '$13 x 1.15 = $14.95',            '$13 x 1.15 = $14.95 (base only)',    'B does NOT pay the bundle because BI alone does not qualify.'),
-        ('High-premium PIF NB',                'NB', 4500, 'PIP+PD+CC+BI+UM',  '100% (PIF)', 'Counts toward tier','($16+$4.5 over-$3k+$15 PIF) x 1.25 = $43.75','($13+$7+$15) x 1.25 = $43.75',       'PIF adds the biggest dollars on both A and B.'),
-        ('Standard Renewal',                   'REN',1500, 'PIP+PD+CC',        '25%', 'Pays $0 today',       '$7 x 1.15 = $8.05',              '$8 x 1.15 = $9.20',                  'Renewals pay - this is new (current = $0).'),
-        ('Renewal + Liability + PIF',          'REN',2000, 'Full + BI+UM PIF', '100% (PIF)', 'Pays $0 today','($9+$7 PIF) x 1.25 = $20.00',     '($8+$4+$7) x 1.25 = $23.75',         'B rewards renewal liability bundle + PIF.'),
+        ('Basic FL NB - PIP/PD only',          'NB', 1000, 'PIP+PD',           '25%', 'Counts toward tier',  '$6 x 1.15 = $6.90',              '$11 x 1.15 = $12.65',                'B pays more - coverage = money, even at low premium.'),
+        ('Full Coverage NB - no liability',    'NB', 1500, 'PIP+PD+Comp+Coll', '25%', 'Counts toward tier',  '$8 x 1.15 = $9.20',              '$11 x 1.15 = $12.65',                'B pays base only (no BI+UM).'),
+        ('Full Coverage + Liability NB',       'NB', 2000, 'PIP+PD+CC+BI+UM',  '25%', 'Counts toward tier',  '$11 x 1.15 = $12.65',            '($11+$6) x 1.15 = $19.55',           'B clearly wins because liability bundle adds $6.'),
+        ('NB with BI ALONE (no UM)',           'NB', 2000, 'PIP+PD+BI no UM',  '25%', 'Counts toward tier',  '$11 x 1.15 = $12.65',            '$11 x 1.15 = $12.65 (base only)',    'B does NOT pay the bundle because BI alone does not qualify.'),
+        ('High-premium PIF NB',                'NB', 4500, 'PIP+PD+CC+BI+UM',  '100% (PIF)', 'Counts toward tier','($13+$3 over-$3k+$13 PIF) x 1.25 = $36.25','($11+$6+$13) x 1.25 = $37.50',       'PIF adds the biggest dollars on both A and B.'),
+        ('Standard Renewal',                   'REN',1500, 'PIP+PD+CC',        '25%', 'Pays $0 today',       '$6 x 1.15 = $6.90',              '$7 x 1.15 = $8.05',                  'Renewals pay - this is new (current = $0).'),
+        ('Renewal + Liability + PIF',          'REN',2000, 'Full + BI+UM PIF', '100% (PIF)', 'Pays $0 today','($7+$5 PIF) x 1.25 = $15.00',     '($7+$3+$5) x 1.25 = $18.75',         'B rewards renewal liability bundle + PIF.'),
         ('Rewrite (any premium)',              'RWR',1200, 'Any',              '25%', 'Counts toward tier (BAD)','$2 x 1.15 = $2.30',           '$2 x 1.15 = $2.30',                  'Both new plans deprioritize RWR.'),
     ]
 
@@ -1962,13 +1981,13 @@ def build_rules_side_by_side(wb):
 
     rows = [
         ('Bonus base', 'Count tier (NB+RWR)', 'Written premium tier', 'Coverage type'),
-        ('NB - low premium (< $1,200)', 'Count toward tier', '$7', '$13 (base coverage)'),
-        ('NB - medium premium', 'Count toward tier', '$10-$16 (tier)', '$13 (base) + $7 if BI+UM'),
-        ('NB - high premium ($3,000+)', 'Count toward tier', '$16 + $3/$1k, cap $35', '$13 (base) + $7 if BI+UM'),
-        ('REN - any', 'PAYS NOTHING', '$6 / $7 / $9 by premium tier', '$8 (base) + $4 if BI+UM'),
+        ('NB - low premium (< $1,200)', 'Count toward tier', '$6', '$11 (base coverage)'),
+        ('NB - medium premium', 'Count toward tier', '$8-$13 (tier)', '$11 (base) + $6 if BI+UM'),
+        ('NB - high premium ($3,000+)', 'Count toward tier', '$13 + $2/$1k, cap $28', '$11 (base) + $6 if BI+UM'),
+        ('REN - any', 'PAYS NOTHING', '$5 / $6 / $7 by premium tier', '$7 (base) + $3 if BI+UM'),
         ('RWR - any', 'Count toward tier (BAD)', '$2 flat', '$2 flat'),
-        ('Coverage detail', 'Not tracked', 'Not paid separately', 'BI+UM bundle = +$7 NB / +$4 REN'),
-        ('PIF add', 'Not paid', '+$11 NB / +$15 high NB / +$7 REN', '+$11 NB / +$15 high NB / +$7 REN'),
+        ('Coverage detail', 'Not tracked', 'Not paid separately', 'BI+UM bundle = +$6 NB / +$3 REN'),
+        ('PIF add', 'Not paid', '+$9 NB / +$13 high NB / +$5 REN', '+$9 NB / +$13 high NB / +$5 REN'),
         ('Collected % kicker', 'NONE', '+10% / +15% / +20% / +25%', 'Same as A'),
         ('Monthly minimum (NEW)', '35 policies NB+RWR', f'NB >= ${NB_MIN_PREMIUM/1000:.0f}k AND REN >= ${REN_MIN_PREMIUM/1000:.0f}k', 'Same as A'),
         ('RWR gate', 'No - RWR counts toward 35', 'RWR paid only if BOTH NB+REN gates pass', 'Same as A'),
@@ -2056,10 +2075,10 @@ def build_agent_quick_ref(wb):
     r += 1
 
     examples = [
-        ('NB $1,000 PIP+PD, 25% down', '$7 x 1.15 = $8.05', '$13 x 1.15 = $14.95'),
-        ('NB $2,000 with BI+UM, 25% down', '$13 x 1.15 = $14.95', '($13 + $7) x 1.15 = $23.00'),
-        ('NB $2,500 PIF with BI+UM', '($16 + $11 PIF) x 1.25 = $33.75', '($13 + $7 + $11 PIF) x 1.25 = $38.75'),
-        ('Renewal $1,500 with BI+UM, 25%', '$7 x 1.15 = $8.05', '($8 + $4) x 1.15 = $13.80'),
+        ('NB $1,000 PIP+PD, 25% down', '$6 x 1.15 = $6.90', '$11 x 1.15 = $12.65'),
+        ('NB $2,000 with BI+UM, 25% down', '$11 x 1.15 = $12.65', '($11 + $6) x 1.15 = $19.55'),
+        ('NB $2,500 PIF with BI+UM', '($13 + $9 PIF) x 1.25 = $27.50', '($11 + $6 + $9 PIF) x 1.25 = $32.50'),
+        ('Renewal $1,500 with BI+UM, 25%', '$6 x 1.15 = $6.90', '($7 + $3) x 1.15 = $11.50'),
         ('Rewrite $1,200', '$2 x 1.15 = $2.30', '$2 x 1.15 = $2.30'),
     ]
     for ex in examples:
@@ -2101,14 +2120,14 @@ def build_assumptions(wb):
         ('Review threshold (standard)', '40% of safe net', 'If monthly target > 40% safe net, ownership reviews.', 'Most months stay below.'),
         ('Review threshold (PIF)', '55% of safe net', 'Higher because PIF has no chargeback risk.', '-'),
         ('Chargeback period (PRIMARY PROTECTION)', '90 days', 'Cancel/rewrite reversal window. The actual profit shield.', 'Matches carrier commission chargeback exposure.'),
-        ('Proposal A NB tiers', '$7 / $10 / $13 / $16 / $16+$3/$1k cap $35', 'NB pay by written premium (raised from old $5/$7/$9/$11/$11+$2 to match current pay under FLIP).', '-'),
-        ('Proposal A REN tiers', '$6 / $7 / $9', 'REN pay by written premium (raised from old $4/$5/$6).', '-'),
+        ('Proposal A NB tiers', '$6 / $8 / $11 / $13 / $13+$2/$1k cap $28', 'NB pay by written premium tier.', 'Calibrated so 100% FLIP pays ~86% of today current.'),
+        ('Proposal A REN tiers', '$5 / $6 / $7', 'REN pay by written premium.', '-'),
         ('Proposal A RWR', '$2 flat', 'No tiers, no kicker stacking.', 'Same as Proposal B.'),
-        ('Proposal B NB base', '$13 per policy', 'PIP/PD or PIP+Comp/Coll (raised from old $10).', 'See Coverage Bundle Logic.'),
-        ('Proposal B NB liability add', '+$7 per policy with BI+UM', 'Bundled - UM cannot exist without BI (raised from old +$5).', 'BI alone does not qualify.'),
-        ('Proposal B REN base', '$8 per policy', 'Renewal base (raised from old $6).', '-'),
-        ('Proposal B REN liability add', '+$4 per policy with BI+UM', 'Same bundle logic on REN (raised from old +$3).', '-'),
-        ('PIF add-ons', '+$11 NB / +$15 high NB / +$7 REN', 'On both Plan A and Plan B (raised from old +$8/+$12/+$5).', 'Top of all add-ons.'),
+        ('Proposal B NB base', '$11 per policy', 'PIP/PD or PIP+Comp/Coll.', 'See Coverage Bundle Logic.'),
+        ('Proposal B NB liability add', '+$6 per policy with BI+UM', 'Bundled - UM cannot exist without BI.', 'BI alone does not qualify.'),
+        ('Proposal B REN base', '$7 per policy', 'Renewal base.', '-'),
+        ('Proposal B REN liability add', '+$3 per policy with BI+UM', 'Same bundle logic on REN.', '-'),
+        ('PIF add-ons', '+$9 NB / +$13 high NB / +$5 REN', 'On both Plan A and Plan B.', 'Top of all add-ons.'),
         ('Collected kicker tiers', '15-24% / 25-49% / 50-99% / 100%', '+10% / +15% / +20% / +25%', 'Same A and B.'),
         ('Liability adoption (NB)', '35% of NB', 'Estimated share of NB policies that carry BI+UM.', 'For aggregate modeling. Actual bonus paid per verified policy.'),
         ('Liability adoption (REN)', '30% of REN', 'Estimated share of REN policies that carry BI+UM.', 'Same as above.'),

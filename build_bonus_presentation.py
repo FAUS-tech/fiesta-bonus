@@ -194,6 +194,35 @@ def slide_cover(prs):
              font_size=15, italic=True, color=LIGHT_BLUE)
 
 
+def slide_glossary(prs, idx, total):
+    s = add_slide(prs)
+    header_strip(s, "Glossary - What These Terms Mean",
+                 "Skip this slide if you know the insurance jargon.")
+    footer(s, idx, total)
+
+    terms = [
+        ["Term", "What it means"],
+        ["NB", "NEW BUSINESS - first time the customer is on the books."],
+        ["RWR", "REWRITE - cancel an existing policy and write a NEW one (usually at a different carrier). Churns the book."],
+        ["REN", "RENEWAL - the existing policy renews at the SAME carrier. Customer stays put."],
+        ["PIF", "PAID IN FULL - customer pays the entire premium upfront. Zero chargeback risk."],
+        ["BI", "BODILY INJURY liability - pays the OTHER person's injuries if your customer caused the accident."],
+        ["UM", "UNINSURED MOTORIST - pays YOUR customer if hit by an uninsured driver. Cannot exist without BI."],
+        ["PIP / PD", "PERSONAL INJURY PROTECTION and PROPERTY DAMAGE liability. Required in Florida."],
+        ["Comp / Coll", "COMPREHENSIVE / COLLISION - covers your customer's OWN car damage."],
+        ["Collected %", "% of premium the customer actually paid. Down payment / total = collected %."],
+        ["Safe Net", "Money left after corporate royalty (21%) and overhead (30%). Bonus comes from this pool."],
+        ["Chargeback", "If a policy cancels within 90 days, the bonus is reversed."],
+        ["Kicker", "Bonus multiplier on the collected %. Higher down = bigger multiplier."],
+        ["Minimum / Gate", "A monthly premium threshold the agent must hit to earn that bonus line."],
+        ["FLIP scenario", "Hypothetical: 'what if ALL rewrites had been renewals?'"],
+        ["SWAP scenario", "Hypothetical: 'what if HALF the rewrites became renewals?'"],
+    ]
+    add_table(s, Inches(0.5), Inches(1.2), Inches(12.3), Inches(5.8), terms,
+              header_fill=NAVY, col_widths=[Inches(2.0), Inches(10.3)],
+              font_size=12, row_height_in=0.36, first_col_bold=True)
+
+
 def slide_problem(prs, idx, total):
     s = add_slide(prs)
     header_strip(s, "Why We're Changing the Plan",
@@ -302,11 +331,11 @@ def slide_plan_a_details(prs, idx, total):
 
     nb_data = [
         ["NB Tier (Written Premium)", "Pay per Policy", "Plain English"],
-        ["Under $1,200", "$7", "Low-premium NB earns base"],
-        ["$1,200 - $1,799", "$10", "Standard NB"],
-        ["$1,800 - $2,199", "$13", "Higher premium earns more"],
-        ["$2,200 - $2,999", "$16", "Strong premium"],
-        ["$3,000+", "$16 + $3 per $1k (cap $35)", "Commercial / high-premium upside"],
+        ["Under $1,200", "$6", "Low-premium NB earns base"],
+        ["$1,200 - $1,799", "$8", "Standard NB"],
+        ["$1,800 - $2,199", "$11", "Higher premium earns more"],
+        ["$2,200 - $2,999", "$13", "Strong premium"],
+        ["$3,000+", "$13 + $2 per $1k (cap $28)", "Commercial / high-premium upside"],
     ]
     add_table(s, Inches(0.5), Inches(1.2), Inches(7.5), Inches(2.6), nb_data,
               header_fill=GREEN, col_widths=[Inches(2.6), Inches(2.4), Inches(2.5)],
@@ -314,9 +343,9 @@ def slide_plan_a_details(prs, idx, total):
 
     ren_data = [
         ["REN Tier", "Pay per Policy", "RWR"],
-        ["Under $1,200", "$6", "$2 flat (any RWR)"],
-        ["$1,200 - $1,799", "$7", "No tier"],
-        ["$1,800+", "$9", "No coverage stacking"],
+        ["Under $1,200", "$5", "$2 flat (any RWR)"],
+        ["$1,200 - $1,799", "$6", "No tier"],
+        ["$1,800+", "$7", "No coverage stacking"],
     ]
     add_table(s, Inches(8.3), Inches(1.2), Inches(4.6), Inches(1.7), ren_data,
               header_fill=GOLD, col_widths=[Inches(1.8), Inches(1.4), Inches(1.4)],
@@ -325,9 +354,9 @@ def slide_plan_a_details(prs, idx, total):
     addons = [
         ["Add-on", "Amount", "When"],
         ["Collected Kicker", "+10/+15/+20/+25%", "15-24 / 25-49 / 50-99 / 100% collected"],
-        ["PIF Add (NB <$3k)", "+$11", "Policy paid in full"],
-        ["PIF Add (NB $3k+)", "+$15", "Policy paid in full"],
-        ["PIF Add (REN)", "+$7", "Renewal paid in full"],
+        ["PIF Add (NB <$3k)", "+$9", "Policy paid in full"],
+        ["PIF Add (NB $3k+)", "+$13", "Policy paid in full"],
+        ["PIF Add (REN)", "+$5", "Renewal paid in full"],
     ]
     add_table(s, Inches(0.5), Inches(4.0), Inches(7.5), Inches(2.0), addons,
               header_fill=ACCENT_BLUE, col_widths=[Inches(2.6), Inches(2.4), Inches(2.5)],
@@ -339,12 +368,12 @@ def slide_plan_a_details(prs, idx, total):
     ex_lines = [
         "$2,000 NB (BI+UM, 25% collected, not PIF)",
         "",
-        "Tier: $1,800-$2,199 = $13",
+        "Tier: $1,800-$2,199 = $11",
         "Coverage add: $0 (Plan A has no coverage)",
         "Kicker: 25% collected = +15% (x 1.15)",
         "PIF: not PIF, $0",
         "",
-        "PER-POLICY PAY: $13 x 1.15 = $14.95",
+        "PER-POLICY PAY: $11 x 1.15 = $12.65",
     ]
     y = Inches(3.55)
     for line in ex_lines:
@@ -362,12 +391,12 @@ def slide_plan_b_details(prs, idx, total):
 
     cov_data = [
         ["Bonus Line", "Per Policy", "When It Pays"],
-        ["NB BASE", "$13", "PIP/PD ONLY, or PIP+Comp/Coll (any auto NB)"],
-        ["NB LIABILITY ADD", "+$7", "BI AND UM both on the policy (bundle)"],
+        ["NB BASE", "$11", "PIP/PD ONLY, or PIP+Comp/Coll (any auto NB)"],
+        ["NB LIABILITY ADD", "+$6", "BI AND UM both on the policy (bundle)"],
         ["BI ALONE", "$0 add", "BI without UM does NOT earn the bundle"],
         ["UM ALONE", "Not possible", "FL rules block UM without BI"],
-        ["REN BASE", "$8", "Any renewal"],
-        ["REN LIABILITY ADD", "+$4", "BI+UM both on the renewal"],
+        ["REN BASE", "$7", "Any renewal"],
+        ["REN LIABILITY ADD", "+$3", "BI+UM both on the renewal"],
         ["RWR", "$2 flat", "Any rewrite (no coverage stacking)"],
     ]
     add_table(s, Inches(0.5), Inches(1.2), Inches(7.5), Inches(3.4), cov_data,
@@ -377,9 +406,9 @@ def slide_plan_b_details(prs, idx, total):
     addons = [
         ["Add-on", "Amount", "When"],
         ["Collected Kicker", "+10/+15/+20/+25%", "Same as Plan A"],
-        ["PIF NB (<$3k)", "+$11", "Paid in full"],
-        ["PIF NB ($3k+)", "+$15", "Paid in full"],
-        ["PIF REN", "+$7", "Renewal paid in full"],
+        ["PIF NB (<$3k)", "+$9", "Paid in full"],
+        ["PIF NB ($3k+)", "+$13", "Paid in full"],
+        ["PIF REN", "+$5", "Renewal paid in full"],
     ]
     add_table(s, Inches(0.5), Inches(4.8), Inches(7.5), Inches(1.9), addons,
               header_fill=ACCENT_BLUE, col_widths=[Inches(2.4), Inches(1.6), Inches(3.5)],
@@ -391,15 +420,15 @@ def slide_plan_b_details(prs, idx, total):
     ex_lines = [
         "$2,000 NB (BI+UM, 25% collected, not PIF)",
         "",
-        "Base coverage: $13",
-        "Liability bundle (BI+UM): +$7",
-        "Subtotal: $20",
+        "Base coverage: $11",
+        "Liability bundle (BI+UM): +$6",
+        "Subtotal: $17",
         "Kicker: 25% collected = +15% (x 1.15)",
         "PIF: not PIF, $0",
         "",
-        "PER-POLICY PAY: $20 x 1.15 = $23.00",
+        "PER-POLICY PAY: $17 x 1.15 = $19.55",
         "",
-        "Same policy on Plan A: $14.95",
+        "Same policy on Plan A: $12.65",
         "Plan B rewards coverage upsell directly.",
     ]
     y = Inches(1.75)
@@ -802,27 +831,28 @@ def build():
     # Build all slides
     builders = [
         lambda t: slide_cover(prs),
-        lambda t: slide_problem(prs, 2, t),
-        lambda t: slide_goals(prs, 3, t),
-        lambda t: slide_two_plans_at_a_glance(prs, 4, t),
-        lambda t: slide_plan_a_details(prs, 5, t),
-        lambda t: slide_plan_b_details(prs, 6, t),
-        lambda t: slide_minimums(prs, 7, t),
-        lambda t: slide_kicker(prs, 8, t),
-        lambda t: slide_safe_net(prs, 9, t),
-        lambda t: slide_safe_net_real(prs, 10, t),
-        lambda t: slide_why_current_drops(prs, 11, t),
+        lambda t: slide_glossary(prs, 2, t),
+        lambda t: slide_problem(prs, 3, t),
+        lambda t: slide_goals(prs, 4, t),
+        lambda t: slide_two_plans_at_a_glance(prs, 5, t),
+        lambda t: slide_plan_a_details(prs, 6, t),
+        lambda t: slide_plan_b_details(prs, 7, t),
+        lambda t: slide_minimums(prs, 8, t),
+        lambda t: slide_kicker(prs, 9, t),
+        lambda t: slide_safe_net(prs, 10, t),
+        lambda t: slide_safe_net_real(prs, 11, t),
+        lambda t: slide_why_current_drops(prs, 12, t),
     ]
     # Per-agent slides (6)
     for i, agent in enumerate(AGENT_NAMES):
-        idx = 12 + i
+        idx = 13 + i
         builders.append(lambda t, a=agent, ix=idx: slide_agent_detail(prs, ix, t, a, per_agent))
     # Remaining
     builders.extend([
-        lambda t: slide_swap_comparison(prs, 18, t, real, swap, flip),
-        lambda t: slide_profitability(prs, 19, t),
-        lambda t: slide_recommendation(prs, 20, t),
-        lambda t: slide_roadmap(prs, 21, t),
+        lambda t: slide_swap_comparison(prs, 19, t, real, swap, flip),
+        lambda t: slide_profitability(prs, 20, t),
+        lambda t: slide_recommendation(prs, 21, t),
+        lambda t: slide_roadmap(prs, 22, t),
         lambda t: slide_closing(prs),
     ])
     total = len(builders)
