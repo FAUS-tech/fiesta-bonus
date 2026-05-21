@@ -155,34 +155,38 @@ def kicker_label(collected_pct):
 
 
 def nb_premium_tier(avg_prem):
-    """Proposal A NB tier."""
-    if avg_prem < 1200: return 6,  "Under $1,200"
-    if avg_prem < 1800: return 8,  "$1,200-$1,799"
-    if avg_prem < 2200: return 11, "$1,800-$2,199"
-    if avg_prem < 3000: return 13, "$2,200-$2,999"
-    val = min(13 + (avg_prem - 3000) / 1000 * 2, 28)
+    """Per-policy NB base bonus by written premium tier."""
+    if avg_prem < 1200: return 5,  "Under $1,200"
+    if avg_prem < 1800: return 7,  "$1,200-$1,799"
+    if avg_prem < 2500: return 10, "$1,800-$2,499"
+    if avg_prem < 3000: return 13, "$2,500-$2,999"
+    val = min(13 + (avg_prem - 3000) / 1000 * 2, 25)
     return val, "$3,000+"
 
 
 def ren_premium_tier(avg_prem):
-    """Proposal A REN tier."""
-    if avg_prem < 1200: return 5, "Under $1,200"
+    """Per-policy REN base bonus by written premium tier."""
+    if avg_prem < 1200: return 4, "Under $1,200"
     if avg_prem < 1800: return 6, "$1,200-$1,799"
-    return 7, "$1,800+"
+    if avg_prem < 2500: return 8, "$1,800-$2,499"
+    return 10, "$2,500+"
 
 
-NB_BASE = 7
-RWR_BASE = 2
-REN_BASE = 5
+def rwr_premium_tier(avg_prem):
+    """Per-policy RWR base bonus by written premium tier (low - rewrites are deprioritized)."""
+    if avg_prem < 1200: return 2, "Under $1,200"
+    if avg_prem < 1800: return 3, "$1,200-$1,799"
+    return 4, "$1,800+"
 
 
 def calc_proposal_a(nb, rwr, ren, retention_rate=RETENTION_RATE_DEFAULT):
-    """THE BONUS PLAN (boss-approved framework, replaces old Plan A):
+    """THE BONUS PLAN (boss-approved framework + tiered per-policy base):
 
-    1. Per-policy BASE (no tiers, flat dollar amount):
-         NB: $7 per policy
-         RWR: $2 per policy
-         REN: $5 per policy
+    1. Per-policy BASE - TIERED by written premium:
+         NB tiers:  <$1,200 = $5 | $1,200-$1,799 = $7 | $1,800-$2,499 = $10
+                    $2,500-$2,999 = $13 | $3,000+ = $13 + $2/$1k (cap $25)
+         RWR tiers: <$1,200 = $2 | $1,200-$1,799 = $3 | $1,800+ = $4
+         REN tiers: <$1,200 = $4 | $1,200-$1,799 = $6 | $1,800-$2,499 = $8 | $2,500+ = $10
 
     2. Per-policy COLLECTED INCENTIVE (only on policies with premium > $1,200):
          <25% collected: $0
@@ -210,6 +214,14 @@ def calc_proposal_a(nb, rwr, ren, retention_rate=RETENTION_RATE_DEFAULT):
     rwr_c, rwr_p, rwr_col = rwr
     ren_c, ren_p, ren_col = ren
 
+    avg_nb = nb_p / nb_c if nb_c else 0
+    avg_rwr = rwr_p / rwr_c if rwr_c else 0
+    avg_ren = ren_p / ren_c if ren_c else 0
+
+    nb_per, nb_tier_label = nb_premium_tier(avg_nb)
+    rwr_per, rwr_tier_label = rwr_premium_tier(avg_rwr)
+    ren_per, ren_tier_label = ren_premium_tier(avg_ren)
+
     nb_col_pct = nb_col / nb_p if nb_p else 0
     rwr_col_pct = rwr_col / rwr_p if rwr_p else 0
     ren_col_pct = ren_col / ren_p if ren_p else 0
@@ -224,15 +236,15 @@ def calc_proposal_a(nb, rwr, ren, retention_rate=RETENTION_RATE_DEFAULT):
     rwr_inc = col_inc_per_policy(rwr_col_pct)
     ren_inc = col_inc_per_policy(ren_col_pct)
 
-    nb_base_pay = nb_c * NB_BASE
+    nb_base_pay = nb_c * nb_per
     nb_col_pay = nb_c * nb_above * nb_inc
     nb_target = nb_base_pay + nb_col_pay
 
-    rwr_base_pay = rwr_c * RWR_BASE
+    rwr_base_pay = rwr_c * rwr_per
     rwr_col_pay = rwr_c * rwr_above * rwr_inc
     rwr_target = rwr_base_pay + rwr_col_pay
 
-    ren_base_pay = ren_c * REN_BASE
+    ren_base_pay = ren_c * ren_per
     ren_col_pay = ren_c * ren_above * ren_inc
     ren_target = ren_base_pay + ren_col_pay
 
@@ -259,6 +271,10 @@ def calc_proposal_a(nb, rwr, ren, retention_rate=RETENTION_RATE_DEFAULT):
         'nb_base_pay': nb_base_pay, 'nb_col_pay': nb_col_pay,
         'rwr_base_pay': rwr_base_pay, 'rwr_col_pay': rwr_col_pay,
         'ren_base_pay': ren_base_pay, 'ren_col_pay': ren_col_pay,
+        'nb_per': nb_per, 'nb_tier_label': nb_tier_label,
+        'rwr_per': rwr_per, 'rwr_tier_label': rwr_tier_label,
+        'ren_per': ren_per, 'ren_tier_label': ren_tier_label,
+        'avg_nb': avg_nb, 'avg_rwr': avg_rwr, 'avg_ren': avg_ren,
         'nb_above_1200': nb_above, 'rwr_above_1200': rwr_above, 'ren_above_1200': ren_above,
         'nb_inc_per_policy': nb_inc, 'rwr_inc_per_policy': rwr_inc, 'ren_inc_per_policy': ren_inc,
         'retention_bonus': retention_bonus, 'retention_rate': retention_rate,
@@ -793,21 +809,23 @@ def build_proposal_a(wb):
     ws.merge_cells('A2:G2')
 
     r = 4
-    # SECTION 1 - per-policy base
-    ws.cell(row=r, column=1, value='1. PER-POLICY BASE (flat - no tiers)').font = SECTION_FONT
+    # SECTION 1 - per-policy base (TIERED by written premium)
+    ws.cell(row=r, column=1, value='1. PER-POLICY BASE (TIERED by written premium - a $1,200 policy and a $3,000 policy do NOT pay the same)').font = SECTION_FONT
     ws.cell(row=r, column=1).fill = SECTION_FILL
     ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=7)
     r += 1
-    headers = ['Policy Type', 'Base per policy', 'Plain English', 'Worked example', '', '', '']
+    headers = ['Premium tier', 'NB pays', 'RWR pays', 'REN pays', 'Plain English', '', '']
     for i, h in enumerate(headers, 1):
         if h: style_header(ws.cell(row=r, column=i, value=h))
     r += 1
-    base_rows = [
-        ('NB (new business)', f'${NB_BASE}', 'Every new policy written.', '10 NBs -> 10 x $7 = $70'),
-        ('RWR (rewrite)', f'${RWR_BASE}', 'Rewrites still pay - but barely. Not the path to a bigger bonus.', '10 RWRs -> 10 x $2 = $20'),
-        ('REN (renewal)', f'${REN_BASE}', 'Renewals are PAID per policy (this is new).', '10 RENs -> 10 x $5 = $50'),
+    tier_rows = [
+        ('Under $1,200', '$5', '$2', '$4', 'Low-premium policies earn the base. Smaller bonus.'),
+        ('$1,200 - $1,799', '$7', '$3', '$6', 'Standard FL policies. The bulk of the book.'),
+        ('$1,800 - $2,499', '$10', '$4', '$8', 'Higher premium - more commission for the agency, more bonus for the agent.'),
+        ('$2,500 - $2,999', '$13', '$4', '$10', 'Strong premium business.'),
+        ('$3,000+', '$13 + $2/$1k cap $25', '$4', '$10', 'Commercial / high-end auto. Upside on big premium.'),
     ]
-    for row in base_rows:
+    for row in tier_rows:
         for i, v in enumerate(row, 1):
             c = ws.cell(row=r, column=i, value=v)
             style_data(c)
@@ -900,14 +918,14 @@ def build_proposal_a(wb):
     d = AGENTS['Dialinerys Dieguez']['March']
     a = calc_proposal_a(d['NB'], d['RWR'], d['REN'])
     ex_rows = [
-        ('Volumes', f'NB {d["NB"][0]} (${d["NB"][1]:,.0f} written, ${d["NB"][2]:,.0f} collected = {d["NB"][2]/d["NB"][1]*100:.1f}%)', ''),
-        ('Volumes', f'RWR {d["RWR"][0]} (${d["RWR"][1]:,.0f} written, ${d["RWR"][2]:,.0f} collected = {d["RWR"][2]/d["RWR"][1]*100:.1f}%)', ''),
-        ('Volumes', f'REN {d["REN"][0]} (${d["REN"][1]:,.0f} written, ${d["REN"][2]:,.0f} collected = {d["REN"][2]/d["REN"][1]*100:.1f}%)', ''),
-        ('NB base', f'{d["NB"][0]} policies x ${NB_BASE}', f'${a["nb_base_pay"]:.0f}'),
+        ('Volumes', f'NB {d["NB"][0]} (${d["NB"][1]:,.0f} written, ${d["NB"][2]:,.0f} collected = {d["NB"][2]/d["NB"][1]*100:.1f}%, avg policy ${a["avg_nb"]:,.0f})', ''),
+        ('Volumes', f'RWR {d["RWR"][0]} (${d["RWR"][1]:,.0f} written, ${d["RWR"][2]:,.0f} collected = {d["RWR"][2]/d["RWR"][1]*100:.1f}%, avg policy ${a["avg_rwr"]:,.0f})', ''),
+        ('Volumes', f'REN {d["REN"][0]} (${d["REN"][1]:,.0f} written, ${d["REN"][2]:,.0f} collected = {d["REN"][2]/d["REN"][1]*100:.1f}%, avg policy ${a["avg_ren"]:,.0f})', ''),
+        ('NB base (tier)', f'{d["NB"][0]} policies in tier "{a["nb_tier_label"]}" x ${a["nb_per"]}', f'${a["nb_base_pay"]:.0f}'),
         ('NB collected incentive', f'~{a["nb_above_1200"]*100:.0f}% of policies >$1,200, collected {a["nb_col_pct"]*100:.0f}% -> +${a["nb_inc_per_policy"]}/policy', f'${a["nb_col_pay"]:.0f}'),
-        ('REN base', f'{d["REN"][0]} policies x ${REN_BASE}', f'${a["ren_base_pay"]:.0f}'),
+        ('REN base (tier)', f'{d["REN"][0]} policies in tier "{a["ren_tier_label"]}" x ${a["ren_per"]}', f'${a["ren_base_pay"]:.0f}'),
         ('REN collected incentive', f'~{a["ren_above_1200"]*100:.0f}% >$1,200, collected {a["ren_col_pct"]*100:.0f}% -> +${a["ren_inc_per_policy"]}/policy', f'${a["ren_col_pay"]:.0f}'),
-        ('RWR base', f'{d["RWR"][0]} policies x ${RWR_BASE}', f'${a["rwr_base_pay"]:.0f}'),
+        ('RWR base (tier)', f'{d["RWR"][0]} policies in tier "{a["rwr_tier_label"]}" x ${a["rwr_per"]}', f'${a["rwr_base_pay"]:.0f}'),
         ('RWR collected incentive', f'~{a["rwr_above_1200"]*100:.0f}% >$1,200, collected {a["rwr_col_pct"]*100:.0f}% -> +${a["rwr_inc_per_policy"]}/policy', f'${a["rwr_col_pay"]:.0f}'),
         ('Retention bonus', f'75% retention x ${RETENTION_POOL} pool', f'${a["retention_bonus"]:.0f}'),
         ('Subtotal target', '(everything before gates)', f'${a["total_target"]:.0f}'),

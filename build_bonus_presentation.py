@@ -330,18 +330,20 @@ def slide_plan_a_details_new(prs, idx, total):
                  "No tiers. Flat per-policy base. Per-policy collected incentive on policies >$1,200. Plus a book retention bonus.")
     footer(s, idx, total)
 
-    # Section 1: Per-policy base
+    # Section 1: Per-policy base - TIERED
     base_data = [
-        ["Policy Type", "Base per policy", "What it means"],
-        ["NB (new business)", "$7", "Every new policy written"],
-        ["RWR (rewrite)", "$2", "Rewrites pay but barely - they don't drive the bonus"],
-        ["REN (renewal)", "$5", "Renewals pay per policy (this is NEW vs today)"],
+        ["Premium tier", "NB", "RWR", "REN"],
+        ["Under $1,200", "$5", "$2", "$4"],
+        ["$1,200 - $1,799", "$7", "$3", "$6"],
+        ["$1,800 - $2,499", "$10", "$4", "$8"],
+        ["$2,500 - $2,999", "$13", "$4", "$10"],
+        ["$3,000+", "$13+$2/$1k (max $25)", "$4", "$10"],
     ]
     add_text(s, Inches(0.4), Inches(1.05), Inches(6.2), Inches(0.3),
-             "1. PER-POLICY BASE (flat, no tiers)", font_size=13, bold=True, color=NAVY)
-    add_table(s, Inches(0.4), Inches(1.4), Inches(6.2), Inches(1.55), base_data,
-              header_fill=GREEN, col_widths=[Inches(2.0), Inches(1.5), Inches(2.7)],
-              font_size=11, row_height_in=0.35)
+             "1. PER-POLICY BASE (TIERED by written premium)", font_size=13, bold=True, color=NAVY)
+    add_table(s, Inches(0.4), Inches(1.4), Inches(6.2), Inches(2.2), base_data,
+              header_fill=GREEN, col_widths=[Inches(2.0), Inches(1.7), Inches(1.0), Inches(1.5)],
+              font_size=11, row_height_in=0.32)
 
     # Section 2: Collected incentive
     inc_data = [
@@ -716,14 +718,13 @@ def slide_calc_walkthrough(prs, idx, total):
         line_h = Inches(0.215)
         lines = [
             ("Volume:", True, hdr),
-            (f"  NB: {nb_c}, ${nb_p/1000:.0f}k W / ${nb_col/1000:.1f}k C ({a['nb_col_pct']*100:.0f}%)", False, BLACK),
-            (f"  RWR: {rwr_c}, ${rwr_p/1000:.0f}k W / ${rwr_col/1000:.1f}k C ({a['rwr_col_pct']*100:.0f}%)", False, BLACK),
-            (f"  REN: {ren_c}, ${ren_p/1000:.0f}k W / ${ren_col/1000:.1f}k C ({a['ren_col_pct']*100:.0f}%)", False, BLACK),
-            ("", False, BLACK),
-            ("Per-policy BASE:", True, hdr),
-            (f"  NB = {nb_c} x $7 = ${a['nb_base_pay']:.0f}", False, NAVY),
-            (f"  REN = {ren_c} x $5 = ${a['ren_base_pay']:.0f}", False, NAVY),
-            (f"  RWR = {rwr_c} x $2 = ${a['rwr_base_pay']:.0f}", False, NAVY),
+            (f"  NB: {nb_c}, ${nb_p/1000:.0f}k W / ${nb_col/1000:.1f}k C ({a['nb_col_pct']*100:.0f}%, avg ${a['avg_nb']:,.0f})", False, BLACK),
+            (f"  RWR: {rwr_c}, ${rwr_p/1000:.0f}k W / ${rwr_col/1000:.1f}k C ({a['rwr_col_pct']*100:.0f}%, avg ${a['avg_rwr']:,.0f})", False, BLACK),
+            (f"  REN: {ren_c}, ${ren_p/1000:.0f}k W / ${ren_col/1000:.1f}k C ({a['ren_col_pct']*100:.0f}%, avg ${a['avg_ren']:,.0f})", False, BLACK),
+            ("Per-policy BASE (tiered):", True, hdr),
+            (f"  NB tier '{a['nb_tier_label']}': {nb_c} x ${a['nb_per']} = ${a['nb_base_pay']:.0f}", False, NAVY),
+            (f"  REN tier '{a['ren_tier_label']}': {ren_c} x ${a['ren_per']} = ${a['ren_base_pay']:.0f}", False, NAVY),
+            (f"  RWR tier '{a['rwr_tier_label']}': {rwr_c} x ${a['rwr_per']} = ${a['rwr_base_pay']:.0f}", False, NAVY),
             ("Collected incentive (>$1,200 only):", True, hdr),
             (f"  NB +${a['nb_inc_per_policy']}/pol x {a['nb_above_1200']*100:.0f}% = ${a['nb_col_pay']:.0f}", False, NAVY),
             (f"  REN +${a['ren_inc_per_policy']}/pol x {a['ren_above_1200']*100:.0f}% = ${a['ren_col_pay']:.0f}", False, NAVY),
