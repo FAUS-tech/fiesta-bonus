@@ -323,6 +323,69 @@ def slide_two_plans_at_a_glance(prs, idx, total):
              font_size=11, italic=True, color=DARK_GRAY, align=PP_ALIGN.CENTER)
 
 
+def slide_plan_a_details_new(prs, idx, total):
+    """New Plan A: boss-approved framework, no tiers, retention bonus."""
+    s = add_slide(prs)
+    header_strip(s, "THE BONUS PLAN (boss-approved framework)",
+                 "No tiers. Flat per-policy base. Per-policy collected incentive on policies >$1,200. Plus a book retention bonus.")
+    footer(s, idx, total)
+
+    # Section 1: Per-policy base
+    base_data = [
+        ["Policy Type", "Base per policy", "What it means"],
+        ["NB (new business)", "$7", "Every new policy written"],
+        ["RWR (rewrite)", "$2", "Rewrites pay but barely - they don't drive the bonus"],
+        ["REN (renewal)", "$5", "Renewals pay per policy (this is NEW vs today)"],
+    ]
+    add_text(s, Inches(0.4), Inches(1.05), Inches(6.2), Inches(0.3),
+             "1. PER-POLICY BASE (flat, no tiers)", font_size=13, bold=True, color=NAVY)
+    add_table(s, Inches(0.4), Inches(1.4), Inches(6.2), Inches(1.55), base_data,
+              header_fill=GREEN, col_widths=[Inches(2.0), Inches(1.5), Inches(2.7)],
+              font_size=11, row_height_in=0.35)
+
+    # Section 2: Collected incentive
+    inc_data = [
+        ["Collected % of premium", "Extra per policy"],
+        ["Below 25%", "$0 (no incentive)"],
+        ["25% to 49%", "+$2"],
+        ["50% to 99%", "+$3"],
+        ["100% PIF", "+$5"],
+    ]
+    add_text(s, Inches(6.85), Inches(1.05), Inches(6.2), Inches(0.3),
+             "2. COLLECTED INCENTIVE (only on policies > $1,200)", font_size=13, bold=True, color=NAVY)
+    add_table(s, Inches(6.85), Inches(1.4), Inches(6.2), Inches(1.9), inc_data,
+              header_fill=ACCENT_BLUE, col_widths=[Inches(3.5), Inches(2.7)],
+              font_size=11, row_height_in=0.35)
+
+    # Section 3: Retention bonus
+    add_text(s, Inches(0.4), Inches(3.1), Inches(12.7), Inches(0.3),
+             "3. BOOK RETENTION BONUS (paid every month, NOT gated by minimums)", font_size=13, bold=True, color=NAVY)
+    ret_data = [
+        ["What it is", "Formula", "Example values"],
+        ["% of NB premium written 6 months ago still on the books today", "Retention Rate x $300/mo pool",
+         "70% retention -> $210/mo | 80% -> $240/mo | 90% -> $270/mo | 100% -> $300/mo"],
+    ]
+    add_table(s, Inches(0.4), Inches(3.45), Inches(12.7), Inches(1.0), ret_data,
+              header_fill=GOLD, col_widths=[Inches(4.5), Inches(3.0), Inches(5.2)],
+              font_size=11, row_height_in=0.45)
+
+    # Section 4: Rules on top
+    add_text(s, Inches(0.4), Inches(4.65), Inches(12.7), Inches(0.3),
+             "4. RULES ON TOP", font_size=13, bold=True, color=NAVY)
+    rules_data = [
+        ["Rule", "Value", "What it does"],
+        [f"NB monthly minimum", f"${NB_MIN_PREMIUM:,} NB premium", "If NB premium < $35k that month, NB pay = $0"],
+        [f"REN monthly minimum", f"${REN_MIN_PREMIUM:,} REN premium", "If REN premium < $20k that month, REN pay = $0"],
+        ["RWR gate", "Both NB AND REN gates pass", "RWR pay only when both other gates passed"],
+        ["Chargeback", "3 months (90 days)", "100% bonus reversed if policy cancels/rewrites within 90 days"],
+        ["Excel tracker", "Required for every policy", "Agent enters policy info + down + premium. No entry = no bonus."],
+        ["Renewal book", "Assigned per agent", "Newer agents inherit a renewal book from former employees"],
+    ]
+    add_table(s, Inches(0.4), Inches(5.0), Inches(12.7), Inches(2.15), rules_data,
+              header_fill=NAVY, col_widths=[Inches(2.8), Inches(3.4), Inches(6.5)],
+              font_size=11, row_height_in=0.30)
+
+
 def slide_plan_a_details(prs, idx, total):
     s = add_slide(prs)
     header_strip(s, "Plan A - Premium-Based Rules",
@@ -623,7 +686,7 @@ def slide_why_current_drops(prs, idx, total):
 
 
 def slide_calc_walkthrough(prs, idx, total):
-    """One concrete worked example showing exactly how the bonus is calculated in each scenario."""
+    """Step-by-step worked example using Dialinerys March, all 3 scenarios."""
     s = add_slide(prs)
     header_strip(s, "Step-By-Step: How the Bonus Is Calculated",
                  "Worked example: Dialinerys Dieguez, March 2026. Same agent, same month, three scenarios.")
@@ -633,7 +696,6 @@ def slide_calc_walkthrough(prs, idx, total):
     ds = swap_rwr_to_ren(d, 0.5)
     df = full_flip(d)
 
-    # Three columns side by side, each showing the full calc
     scenarios = [
         ('REAL (today)', d, Inches(0.3), LIGHT_GRAY, NAVY),
         ('50% SWAP', ds, Inches(4.62), LIGHT_BLUE, ACCENT_BLUE),
@@ -643,54 +705,36 @@ def slide_calc_walkthrough(prs, idx, total):
         nb_c, nb_p, nb_col = scd['NB']
         rwr_c, rwr_p, rwr_col = scd['RWR']
         ren_c, ren_p, ren_col = scd['REN']
-        nb_pct = nb_col/nb_p if nb_p else 0
-        rwr_pct = rwr_col/rwr_p if rwr_p else 0
-        ren_pct = ren_col/ren_p if ren_p else 0
-        from build_bonus_workbook import kicker as kfn
-        nb_k = kfn(nb_pct); rwr_k = kfn(rwr_pct); ren_k = kfn(ren_pct)
-        nb_t = (nb_c * 11 + nb_c * 0.35 * 6) * nb_k
-        ren_t = (ren_c * 7 + ren_c * 0.30 * 3) * ren_k
-        rwr_t = rwr_c * 2 * rwr_k
-        nb_ok = nb_p >= NB_MIN_PREMIUM
-        ren_ok = ren_p >= REN_MIN_PREMIUM
-        rwr_ok = nb_ok and ren_ok
-        nb_paid = nb_t if nb_ok else 0
-        ren_paid = ren_t if ren_ok else 0
-        rwr_paid = rwr_t if rwr_ok else 0
-        total_paid = nb_paid + ren_paid + rwr_paid
+        a = calc_proposal_a(scd['NB'], scd['RWR'], scd['REN'])
 
-        # Header strip
         add_bar(s, left, Inches(1.1), Inches(4.05), Inches(0.4), hdr)
         add_text(s, left, Inches(1.1), Inches(4.05), Inches(0.4),
                  sc_name, font_size=14, bold=True, color=WHITE,
                  align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
-
-        # Card body
-        add_bar(s, left, Inches(1.5), Inches(4.05), Inches(5.5), fill)
+        add_bar(s, left, Inches(1.5), Inches(4.05), Inches(5.7), fill)
         y = Inches(1.55)
-        line_h = Inches(0.235)
+        line_h = Inches(0.215)
         lines = [
-            (f"Volume:", True, hdr),
-            (f"  NB: {nb_c} policies", False, BLACK),
-            (f"  ${nb_p:,.0f} written / ${nb_col:,.0f} coll", False, BLACK),
-            (f"  collected % = {nb_pct*100:.1f}%", False, BLACK),
-            (f"  RWR: {rwr_c}, ${rwr_p:,.0f} W / ${rwr_col:,.0f} C", False, BLACK),
-            (f"  REN: {ren_c}, ${ren_p:,.0f} W / ${ren_col:,.0f} C", False, BLACK),
+            ("Volume:", True, hdr),
+            (f"  NB: {nb_c}, ${nb_p/1000:.0f}k W / ${nb_col/1000:.1f}k C ({a['nb_col_pct']*100:.0f}%)", False, BLACK),
+            (f"  RWR: {rwr_c}, ${rwr_p/1000:.0f}k W / ${rwr_col/1000:.1f}k C ({a['rwr_col_pct']*100:.0f}%)", False, BLACK),
+            (f"  REN: {ren_c}, ${ren_p/1000:.0f}k W / ${ren_col/1000:.1f}k C ({a['ren_col_pct']*100:.0f}%)", False, BLACK),
             ("", False, BLACK),
-            ("Calculate per line:", True, hdr),
-            (f"  NB = {nb_c}x($11+0.35x$6)x{nb_k:.2f}", False, BLACK),
-            (f"     = {nb_c}x$13.10 x {nb_k:.2f} = ${nb_t:.0f}", False, NAVY),
-            (f"  REN = {ren_c}x($7+0.30x$3)x{ren_k:.2f}", False, BLACK),
-            (f"      = {ren_c}x$7.90 x {ren_k:.2f} = ${ren_t:.0f}", False, NAVY),
-            (f"  RWR = {rwr_c}x$2x{rwr_k:.2f} = ${rwr_t:.0f}", False, NAVY),
-            (f"  TARGET = ${nb_t+ren_t+rwr_t:.0f}", True, NAVY),
-            ("", False, BLACK),
+            ("Per-policy BASE:", True, hdr),
+            (f"  NB = {nb_c} x $7 = ${a['nb_base_pay']:.0f}", False, NAVY),
+            (f"  REN = {ren_c} x $5 = ${a['ren_base_pay']:.0f}", False, NAVY),
+            (f"  RWR = {rwr_c} x $2 = ${a['rwr_base_pay']:.0f}", False, NAVY),
+            ("Collected incentive (>$1,200 only):", True, hdr),
+            (f"  NB +${a['nb_inc_per_policy']}/pol x {a['nb_above_1200']*100:.0f}% = ${a['nb_col_pay']:.0f}", False, NAVY),
+            (f"  REN +${a['ren_inc_per_policy']}/pol x {a['ren_above_1200']*100:.0f}% = ${a['ren_col_pay']:.0f}", False, NAVY),
+            (f"  RWR +${a['rwr_inc_per_policy']}/pol x {a['rwr_above_1200']*100:.0f}% = ${a['rwr_col_pay']:.0f}", False, NAVY),
+            (f"Retention (75% x $300) = ${a['retention_bonus']:.0f}", True, NAVY),
+            (f"TARGET TOTAL = ${a['total_target']:.0f}", True, hdr),
             ("Apply gates:", True, hdr),
-            (f"  NB ${nb_p/1000:.0f}k vs ${NB_MIN_PREMIUM/1000:.0f}k min: {'PASS' if nb_ok else 'FAIL'}", False, GREEN if nb_ok else RED),
-            (f"  REN ${ren_p/1000:.0f}k vs ${REN_MIN_PREMIUM/1000:.0f}k min: {'PASS' if ren_ok else 'FAIL'}", False, GREEN if ren_ok else RED),
-            (f"  RWR (both pass?): {'PASS' if rwr_ok else 'FAIL'}", False, GREEN if rwr_ok else RED),
-            ("", False, BLACK),
-            (f"PAID = ${total_paid:.0f}", True, hdr),
+            (f"  NB ${nb_p/1000:.0f}k vs $35k: {'PASS' if a['nb_qual'] else 'FAIL'}", False, GREEN if a['nb_qual'] else RED),
+            (f"  REN ${ren_p/1000:.0f}k vs $20k: {'PASS' if a['ren_qual'] else 'FAIL'}", False, GREEN if a['ren_qual'] else RED),
+            (f"  RWR (both): {'PASS' if a['rwr_qual'] else 'FAIL'}", False, GREEN if a['rwr_qual'] else RED),
+            (f"PAID = ${a['paid_after_min']:.0f}", True, hdr),
         ]
         for txt, b, c in lines:
             add_text(s, left + Inches(0.1), y, Inches(3.85), line_h, txt,
@@ -922,25 +966,24 @@ def build():
         lambda t: slide_problem(prs, 3, t),
         lambda t: slide_goals(prs, 4, t),
         lambda t: slide_two_plans_at_a_glance(prs, 5, t),
-        lambda t: slide_plan_a_details(prs, 6, t),
-        lambda t: slide_plan_b_details(prs, 7, t),
-        lambda t: slide_minimums(prs, 8, t),
-        lambda t: slide_kicker(prs, 9, t),
-        lambda t: slide_safe_net(prs, 10, t),
-        lambda t: slide_safe_net_real(prs, 11, t),
-        lambda t: slide_why_current_drops(prs, 12, t),
-        lambda t: slide_calc_walkthrough(prs, 13, t),
+        lambda t: slide_plan_a_details_new(prs, 6, t),
+        lambda t: slide_minimums(prs, 7, t),
+        lambda t: slide_kicker(prs, 8, t),
+        lambda t: slide_safe_net(prs, 9, t),
+        lambda t: slide_safe_net_real(prs, 10, t),
+        lambda t: slide_why_current_drops(prs, 11, t),
+        lambda t: slide_calc_walkthrough(prs, 12, t),
     ]
     # Per-agent slides (6)
     for i, agent in enumerate(AGENT_NAMES):
-        idx = 14 + i
+        idx = 13 + i
         builders.append(lambda t, a=agent, ix=idx: slide_agent_detail(prs, ix, t, a, per_agent))
     # Remaining
     builders.extend([
-        lambda t: slide_swap_comparison(prs, 20, t, real, swap, flip),
-        lambda t: slide_profitability(prs, 21, t),
-        lambda t: slide_recommendation(prs, 22, t),
-        lambda t: slide_roadmap(prs, 23, t),
+        lambda t: slide_swap_comparison(prs, 19, t, real, swap, flip),
+        lambda t: slide_profitability(prs, 20, t),
+        lambda t: slide_recommendation(prs, 21, t),
+        lambda t: slide_roadmap(prs, 22, t),
         lambda t: slide_closing(prs),
     ])
     total = len(builders)

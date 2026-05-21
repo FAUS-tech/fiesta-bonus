@@ -99,6 +99,29 @@ def kicker(collected_pct):
     return 1.00                              # below 15%, no kicker
 
 
+def col_inc_per_policy(pct):
+    """Flat dollar per-policy collected incentive (only for policies > $1,200 premium).
+    NO TIERS in base bonus - the collected incentive is the only step structure."""
+    if pct >= 1.00: return 5   # PIF
+    if pct >= 0.50: return 3   # 50%+ collected
+    if pct >= 0.25: return 2   # 25-49% collected
+    return 0                    # below 25%: no incentive
+
+
+def pct_above_1200(count, prem):
+    """Estimate share of policies with premium > $1,200 (used since we don't have per-policy data)."""
+    if count == 0: return 0
+    avg = prem / count
+    if avg < 600: return 0.0
+    if avg > 2400: return 1.0
+    return (avg - 600) / 1800
+
+
+# Retention bonus parameters
+RETENTION_POOL = 300       # monthly $ pool for retention bonus
+RETENTION_RATE_DEFAULT = 0.75  # placeholder retention rate (actual computed from agency history)
+
+
 def apply_minimums(nb_premium, ren_premium, nb_target, ren_target, rwr_target,
                    nb_min=NB_MIN_PREMIUM, ren_min=REN_MIN_PREMIUM):
     """Gate the bonus lines by the minimum-premium thresholds.
@@ -148,51 +171,106 @@ def ren_premium_tier(avg_prem):
     return 7, "$1,800+"
 
 
-def calc_proposal_a(nb, rwr, ren):
-    """Proposal A: PREMIUM-BASED with collected kicker.
-       Returns BOTH the uncapped target AND the cap-limited paid amount.
-       In practice, pay the target. The cap is an ownership safety check at month-end."""
+NB_BASE = 7
+RWR_BASE = 2
+REN_BASE = 5
+
+
+def calc_proposal_a(nb, rwr, ren, retention_rate=RETENTION_RATE_DEFAULT):
+    """THE BONUS PLAN (boss-approved framework, replaces old Plan A):
+
+    1. Per-policy BASE (no tiers, flat dollar amount):
+         NB: $7 per policy
+         RWR: $2 per policy
+         REN: $5 per policy
+
+    2. Per-policy COLLECTED INCENTIVE (only on policies with premium > $1,200):
+         <25% collected: $0
+         25-49% collected: +$2 per policy
+         50-99% collected: +$3 per policy
+         100% PIF: +$5 per policy
+
+    3. Book retention BONUS (paid monthly, separate from per-policy):
+         retention_rate x $300
+         retention_rate = % of NB premium written 6 months ago that is still active today.
+         For modeling here we assume 75% (industry typical); actual computed from agency history.
+
+    4. Monthly MINIMUMS:
+         NB premium >= $35,000/mo -> unlocks NB base + NB collected
+         REN premium >= $20,000/mo -> unlocks REN base + REN collected
+         Both gates pass -> unlocks RWR base + RWR collected
+         Retention bonus is NOT gated by monthly minimums.
+
+    5. 3-month CHARGEBACK on cancellations.
+
+    6. Agent must enter policy info, down payment, premium in the manual tracker
+       for the policy to be eligible for bonus. No entry = no bonus.
+    """
     nb_c, nb_p, nb_col = nb
     rwr_c, rwr_p, rwr_col = rwr
     ren_c, ren_p, ren_col = ren
 
-    avg_nb = nb_p / nb_c if nb_c else 0
-    avg_ren = ren_p / ren_c if ren_c else 0
-
-    nb_per, nb_tier_label = nb_premium_tier(avg_nb)
-    ren_per, ren_tier_label = ren_premium_tier(avg_ren)
-
     nb_col_pct = nb_col / nb_p if nb_p else 0
-    ren_col_pct = ren_col / ren_p if ren_p else 0
     rwr_col_pct = rwr_col / rwr_p if rwr_p else 0
+    ren_col_pct = ren_col / ren_p if ren_p else 0
 
-    nb_target = nb_c * nb_per * kicker(nb_col_pct)
-    ren_target = ren_c * ren_per * kicker(ren_col_pct)
-    rwr_target = rwr_c * 2 * kicker(rwr_col_pct)
-    total_target = nb_target + ren_target + rwr_target
+    # Share of policies with premium > $1,200 (approximation, since per-policy data not available)
+    nb_above = pct_above_1200(nb_c, nb_p)
+    rwr_above = pct_above_1200(rwr_c, rwr_p)
+    ren_above = pct_above_1200(ren_c, ren_p)
+
+    # Per-policy collected incentive (flat $ amount, only on >$1,200 policies)
+    nb_inc = col_inc_per_policy(nb_col_pct)
+    rwr_inc = col_inc_per_policy(rwr_col_pct)
+    ren_inc = col_inc_per_policy(ren_col_pct)
+
+    nb_base_pay = nb_c * NB_BASE
+    nb_col_pay = nb_c * nb_above * nb_inc
+    nb_target = nb_base_pay + nb_col_pay
+
+    rwr_base_pay = rwr_c * RWR_BASE
+    rwr_col_pay = rwr_c * rwr_above * rwr_inc
+    rwr_target = rwr_base_pay + rwr_col_pay
+
+    ren_base_pay = ren_c * REN_BASE
+    ren_col_pay = ren_c * ren_above * ren_inc
+    ren_target = ren_base_pay + ren_col_pay
+
+    # Book retention bonus (separate, paid regardless of monthly gates)
+    retention_bonus = retention_rate * RETENTION_POOL
+
+    total_target = nb_target + ren_target + rwr_target + retention_bonus
 
     total_collected = nb_col + rwr_col + ren_col
     gross_comm = total_collected * BLENDED_COMM
     safe_net = gross_comm * (1 - ROYALTY) * (1 - OVERHEAD)
     cap = safe_net * CAP_STANDARD
-    paid = total_target  # Pay the calculated target. Cap is a review threshold, not auto-cut.
-    capped_paid = min(total_target, cap)  # What it would be if 30% cap was enforced
+    paid = total_target
+    capped_paid = min(total_target, cap)
     bonus_pct_of_safe_net = paid / safe_net if safe_net else 0
-    review_flag = (paid > cap)  # Soft flag: ownership reviews months that exceed 40% safe net
+    review_flag = (paid > cap)
 
+    # Apply minimums to NB/REN/RWR but NOT to retention
     mins = apply_minimums(nb_p, ren_p, nb_target, ren_target, rwr_target)
+    paid_after_min = mins['paid_after_min'] + retention_bonus
 
     return {
-        'avg_nb': avg_nb, 'avg_ren': avg_ren,
-        'nb_per': nb_per, 'nb_tier_label': nb_tier_label,
-        'ren_per': ren_per, 'ren_tier_label': ren_tier_label,
         'nb_target': nb_target, 'ren_target': ren_target, 'rwr_target': rwr_target,
+        'nb_base_pay': nb_base_pay, 'nb_col_pay': nb_col_pay,
+        'rwr_base_pay': rwr_base_pay, 'rwr_col_pay': rwr_col_pay,
+        'ren_base_pay': ren_base_pay, 'ren_col_pay': ren_col_pay,
+        'nb_above_1200': nb_above, 'rwr_above_1200': rwr_above, 'ren_above_1200': ren_above,
+        'nb_inc_per_policy': nb_inc, 'rwr_inc_per_policy': rwr_inc, 'ren_inc_per_policy': ren_inc,
+        'retention_bonus': retention_bonus, 'retention_rate': retention_rate,
         'total_target': total_target,
         'nb_col_pct': nb_col_pct, 'ren_col_pct': ren_col_pct, 'rwr_col_pct': rwr_col_pct,
         'gross_comm': gross_comm, 'safe_net': safe_net, 'cap': cap,
-        'paid': paid, 'capped_paid': capped_paid,
+        'paid': paid, 'capped_paid': capped_paid, 'paid_after_min': paid_after_min,
         'bonus_pct_of_safe_net': bonus_pct_of_safe_net, 'review_flag': review_flag,
-        **mins,
+        'nb_qual': mins['nb_qual'], 'ren_qual': mins['ren_qual'], 'rwr_qual': mins['rwr_qual'],
+        'paid_nb_after_min': mins['paid_nb_after_min'],
+        'paid_ren_after_min': mins['paid_ren_after_min'],
+        'paid_rwr_after_min': mins['paid_rwr_after_min'],
     }
 
 
@@ -702,64 +780,156 @@ def build_executive_summary(wb):
 
 
 def build_proposal_a(wb):
-    ws = wb.create_sheet('Proposal A - Premium')
-    ws['A1'] = 'Proposal A: PREMIUM-BASED Plan'
+    ws = wb.create_sheet('The Bonus Plan')
+    ws['A1'] = 'THE BONUS PLAN (boss-approved framework)'
     ws['A1'].font = TITLE_FONT
     ws['A1'].fill = PROP_A_FILL
     ws.merge_cells('A1:G1')
 
-    ws['A2'] = 'How it works: Each policy is paid by WRITTEN PREMIUM tier. Then the COLLECTED % kicker is applied. Then total is capped at 15% of safe net.'
+    ws['A2'] = ('Per-policy BASE (no tiers) + per-policy COLLECTED INCENTIVE on policies > $1,200 premium '
+                '+ separate BOOK RETENTION bonus. Monthly minimums gate the per-policy lines. '
+                '3-month chargeback. Excel tracker required for every policy.')
     ws['A2'].font = Font(italic=True, size=11, color='1F4E78')
     ws.merge_cells('A2:G2')
 
     r = 4
-    headers = ['Component', 'Rule', 'Per-Policy Pay', 'Plain English', 'Example', 'Example Pay', 'Notes']
-    for i, h in enumerate(headers, 1):
-        style_header(ws.cell(row=r, column=i, value=h))
-    r += 1
-
-    rows = [
-        ('NB', 'Written premium under $1,200', '$6', 'Low-premium NB earns base.', '$1,000 NB', '$6', 'Before kicker'),
-        ('NB', '$1,200-$1,799', '$8', 'Medium NB.', '$1,500 NB', '$8', 'Before kicker'),
-        ('NB', '$1,800-$2,199', '$11', 'Better premium NB.', '$2,000 NB', '$11', 'Before kicker'),
-        ('NB', '$2,200-$2,999', '$13', 'Strong premium NB.', '$2,500 NB', '$13', 'Before kicker'),
-        ('NB', '$3,000+', '$13 + $2 per $1k over $3k, cap $28', 'Commercial / high-premium upside.', '$4,500 NB', '$13 + $3 = $16', 'Before kicker'),
-        ('REN', 'Under $1,200', '$5', 'Renewals are PAID separately. Below NB on purpose.', '$1,000 REN', '$5', 'Before kicker'),
-        ('REN', '$1,200-$1,799', '$6', 'Medium REN.', '$1,500 REN', '$6', 'Before kicker'),
-        ('REN', '$1,800+', '$7', 'High REN.', '$2,000 REN', '$7', 'Before kicker'),
-        ('RWR', 'Any rewrite', '$2 flat', 'Rewrites are paid but DO NOT drive the bonus.', 'Any RWR', '$2', 'No kicker stacking by tier'),
-        ('Collected Kicker', 'Applies to the per-policy pay', '+10% / +15% / +20% / +25%', '15-24% / 25-49% / 50-99% / 100% (PIF)', '$10 target x 25% collected', '$10 x 1.15 = $11.50', 'Same logic both A and B'),
-        ('PIF Add (when paid in full)', 'NB under $3,000 = +$9 / NB $3,000+ = +$13 / REN PIF = +$5', 'Per-policy add-on', 'PIF means cash collected upfront - lower risk.', '$2,500 NB PIF', '$13 base + $9 PIF = $22', 'Manager verifies PIF'),
-        ('Minimum Requirements', f'NB premium >= ${NB_MIN_PREMIUM:,}/mo AND REN premium >= ${REN_MIN_PREMIUM:,}/mo', 'Gates each bonus line', 'Below the gate, that line pays $0.', 'NB $20k written month', 'NB bonus = $0', 'RWR needs BOTH gates'),
-        ('Review Threshold (soft cap)', 'Target > 40% of safe net', 'Flag for ownership review', 'Catches low-collection months. Does NOT auto-reduce pay.', 'Safe net $200, target $80 (40%)', 'Pay $80, flag for review', '40% / 55% PIF'),
-        ('Chargeback (PRIMARY PROTECTION)', '90 days', '100% reversal', 'If a paid policy cancels or rewrites within 90 days, full bonus is reversed.', '$12 paid Jan, cancels Mar', '-$12 in next payroll', 'Required'),
-    ]
-    for row in rows:
-        for i, v in enumerate(row, 1):
-            c = ws.cell(row=r, column=i, value=v)
-            style_data(c)
-            c.fill = PROP_A_FILL if r % 2 == 0 else PatternFill('solid', fgColor='F4FFF4')
-        r += 1
-
-    r += 1
-    ws.cell(row=r, column=1, value='Why this plan').font = SECTION_FONT
+    # SECTION 1 - per-policy base
+    ws.cell(row=r, column=1, value='1. PER-POLICY BASE (flat - no tiers)').font = SECTION_FONT
     ws.cell(row=r, column=1).fill = SECTION_FILL
     ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=7)
     r += 1
-    reasons = [
-        '* Simple payroll math: count policies x tier x kicker = target.',
-        '* Self-balancing: higher-premium business naturally earns more. No coverage paperwork required.',
-        '* Renewals matter for the first time, but stay below NB so the agent still hunts new business.',
-        '* Rewrites stay flat at $2 - they are no longer the path to a bigger bonus.',
-        '* Profitability cap means a high-target month does not become a payroll problem.',
+    headers = ['Policy Type', 'Base per policy', 'Plain English', 'Worked example', '', '', '']
+    for i, h in enumerate(headers, 1):
+        if h: style_header(ws.cell(row=r, column=i, value=h))
+    r += 1
+    base_rows = [
+        ('NB (new business)', f'${NB_BASE}', 'Every new policy written.', '10 NBs -> 10 x $7 = $70'),
+        ('RWR (rewrite)', f'${RWR_BASE}', 'Rewrites still pay - but barely. Not the path to a bigger bonus.', '10 RWRs -> 10 x $2 = $20'),
+        ('REN (renewal)', f'${REN_BASE}', 'Renewals are PAID per policy (this is new).', '10 RENs -> 10 x $5 = $50'),
     ]
-    for t in reasons:
-        c = ws.cell(row=r, column=1, value=t)
-        c.font = Font(size=11)
-        ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=7)
+    for row in base_rows:
+        for i, v in enumerate(row, 1):
+            c = ws.cell(row=r, column=i, value=v)
+            style_data(c)
+            if r % 2 == 0: c.fill = PROP_A_FILL
+        r += 1
+    r += 1
+
+    # SECTION 2 - per-policy collected incentive
+    ws.cell(row=r, column=1, value='2. PER-POLICY COLLECTED INCENTIVE (only on policies with premium > $1,200)').font = SECTION_FONT
+    ws.cell(row=r, column=1).fill = SECTION_FILL
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=7)
+    r += 1
+    headers2 = ['Collected % of premium', 'Extra per policy', 'Why', 'Example', '', '', '']
+    for i, h in enumerate(headers2, 1):
+        if h: style_header(ws.cell(row=r, column=i, value=h))
+    r += 1
+    col_rows = [
+        ('Below 25%', '$0 (no incentive)', 'Premium barely collected. No incentive.', '$1,500 policy, 15% down -> $0 incentive'),
+        ('25% to 49%', '+$2 per policy', 'Standard down. Small incentive.', '$1,500 policy, 30% down -> +$2'),
+        ('50% to 99%', '+$3 per policy', 'High collection. Higher incentive.', '$1,500 policy, 60% down -> +$3'),
+        ('100% PIF', '+$5 per policy', 'Paid in full. Zero chargeback risk. Top incentive.', '$1,500 policy PIF -> +$5'),
+        ('Policy with premium <= $1,200', '$0 incentive', 'Low-premium policies do not earn the incentive.', '$800 policy at 50% -> base only'),
+    ]
+    for row in col_rows:
+        for i, v in enumerate(row, 1):
+            c = ws.cell(row=r, column=i, value=v)
+            style_data(c)
+            if r % 2 == 0: c.fill = PROP_A_FILL
+        r += 1
+    r += 1
+
+    # SECTION 3 - book retention bonus
+    ws.cell(row=r, column=1, value='3. BOOK RETENTION BONUS (separate, not gated by monthly minimums)').font = SECTION_FONT
+    ws.cell(row=r, column=1).fill = SECTION_FILL
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=7)
+    r += 1
+    headers3 = ['Component', 'Value', 'Math', '', '', '', '']
+    for i, h in enumerate(headers3, 1):
+        if h: style_header(ws.cell(row=r, column=i, value=h))
+    r += 1
+    ret_rows = [
+        ('Retention Rate', '% retained', '(NB premium written 6 months ago that is STILL ACTIVE today) / (NB premium written 6 months ago)'),
+        ('Monthly Pool', f'${RETENTION_POOL}', 'Pool of bonus dollars at stake for retention.'),
+        ('Retention Bonus', 'Rate x Pool', f'e.g., 75% x ${RETENTION_POOL} = ${RETENTION_POOL*0.75:.0f}/mo. 90% x ${RETENTION_POOL} = ${RETENTION_POOL*0.9:.0f}/mo. 100% x ${RETENTION_POOL} = ${RETENTION_POOL}/mo.'),
+        ('Modeling assumption', '75% retention rate', f'For modeling in this workbook we use 75% (industry typical) = ${RETENTION_POOL*0.75:.0f}/mo. Actual is computed monthly from the agency\'s history.'),
+    ]
+    for row in ret_rows:
+        for i, v in enumerate(row, 1):
+            c = ws.cell(row=r, column=i, value=v)
+            style_data(c)
+            if r % 2 == 0: c.fill = PROP_A_FILL
+        r += 1
+    r += 1
+
+    # SECTION 4 - minimums + chargeback + tracking
+    ws.cell(row=r, column=1, value='4. RULES THAT APPLY ON TOP').font = SECTION_FONT
+    ws.cell(row=r, column=1).fill = SECTION_FILL
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=7)
+    r += 1
+    headers4 = ['Rule', 'Value', 'How it works', '', '', '', '']
+    for i, h in enumerate(headers4, 1):
+        if h: style_header(ws.cell(row=r, column=i, value=h))
+    r += 1
+    extra_rows = [
+        ('Monthly Minimum - NB', f'${NB_MIN_PREMIUM:,} written premium', 'NB base + NB collected paid ONLY if NB premium clears this gate this month.'),
+        ('Monthly Minimum - REN', f'${REN_MIN_PREMIUM:,} written premium', 'REN base + REN collected paid ONLY if REN premium clears this gate this month.'),
+        ('Monthly Minimum - RWR', 'Both NB AND REN gates pass', 'RWR base + RWR collected paid ONLY if both other gates passed.'),
+        ('Retention Bonus exception', 'Always paid', 'Retention bonus is paid regardless of monthly minimums - it tracks long-term book persistency.'),
+        ('Chargeback', '3 months (90 days)', '100% of the paid bonus on a policy is REVERSED if the policy cancels/rewrites within 90 days of effective date.'),
+        ('Excel Tracker', 'Required for every policy', 'Agent must enter policy info, down payment, and premium in the manual tracker. No entry = no bonus on that policy.'),
+        ('Renewal Book of Business', 'Assigned per agent', 'Each agent has an assigned renewal book. Newer agents who do not have their own renewals get a book reassigned from former employees. The agent is responsible for renewing that book.'),
+    ]
+    for row in extra_rows:
+        for i, v in enumerate(row, 1):
+            c = ws.cell(row=r, column=i, value=v)
+            style_data(c)
+            if r % 2 == 0: c.fill = PROP_A_FILL
+        r += 1
+    r += 1
+
+    # Worked example
+    ws.cell(row=r, column=1, value='5. WORKED EXAMPLE - Dialinerys Dieguez, March 2026').font = SECTION_FONT
+    ws.cell(row=r, column=1).fill = SECTION_FILL
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=7)
+    r += 1
+    ex_headers = ['Step', 'Math', 'Result', '', '', '', '']
+    for i, h in enumerate(ex_headers, 1):
+        if h: style_header(ws.cell(row=r, column=i, value=h))
+    r += 1
+    d = AGENTS['Dialinerys Dieguez']['March']
+    a = calc_proposal_a(d['NB'], d['RWR'], d['REN'])
+    ex_rows = [
+        ('Volumes', f'NB {d["NB"][0]} (${d["NB"][1]:,.0f} written, ${d["NB"][2]:,.0f} collected = {d["NB"][2]/d["NB"][1]*100:.1f}%)', ''),
+        ('Volumes', f'RWR {d["RWR"][0]} (${d["RWR"][1]:,.0f} written, ${d["RWR"][2]:,.0f} collected = {d["RWR"][2]/d["RWR"][1]*100:.1f}%)', ''),
+        ('Volumes', f'REN {d["REN"][0]} (${d["REN"][1]:,.0f} written, ${d["REN"][2]:,.0f} collected = {d["REN"][2]/d["REN"][1]*100:.1f}%)', ''),
+        ('NB base', f'{d["NB"][0]} policies x ${NB_BASE}', f'${a["nb_base_pay"]:.0f}'),
+        ('NB collected incentive', f'~{a["nb_above_1200"]*100:.0f}% of policies >$1,200, collected {a["nb_col_pct"]*100:.0f}% -> +${a["nb_inc_per_policy"]}/policy', f'${a["nb_col_pay"]:.0f}'),
+        ('REN base', f'{d["REN"][0]} policies x ${REN_BASE}', f'${a["ren_base_pay"]:.0f}'),
+        ('REN collected incentive', f'~{a["ren_above_1200"]*100:.0f}% >$1,200, collected {a["ren_col_pct"]*100:.0f}% -> +${a["ren_inc_per_policy"]}/policy', f'${a["ren_col_pay"]:.0f}'),
+        ('RWR base', f'{d["RWR"][0]} policies x ${RWR_BASE}', f'${a["rwr_base_pay"]:.0f}'),
+        ('RWR collected incentive', f'~{a["rwr_above_1200"]*100:.0f}% >$1,200, collected {a["rwr_col_pct"]*100:.0f}% -> +${a["rwr_inc_per_policy"]}/policy', f'${a["rwr_col_pay"]:.0f}'),
+        ('Retention bonus', f'75% retention x ${RETENTION_POOL} pool', f'${a["retention_bonus"]:.0f}'),
+        ('Subtotal target', '(everything before gates)', f'${a["total_target"]:.0f}'),
+        (f'NB gate (${NB_MIN_PREMIUM:,})', f'NB written ${d["NB"][1]:,.0f} vs ${NB_MIN_PREMIUM:,}', 'PASS' if a['nb_qual'] else 'FAIL'),
+        (f'REN gate (${REN_MIN_PREMIUM:,})', f'REN written ${d["REN"][1]:,.0f} vs ${REN_MIN_PREMIUM:,}', 'PASS' if a['ren_qual'] else 'FAIL'),
+        (f'RWR gate (both)', 'Both NB and REN gates passed?', 'PASS' if a['rwr_qual'] else 'FAIL'),
+        ('FINAL PAID', 'Pay only the lines whose gates passed + retention bonus', f'${a["paid_after_min"]:.2f}'),
+    ]
+    for row in ex_rows:
+        for i, v in enumerate(row, 1):
+            c = ws.cell(row=r, column=i, value=v)
+            style_data(c)
+            if 'FAIL' in str(v): c.fill = WARN_FILL
+            elif 'PASS' in str(v): c.fill = PatternFill('solid', fgColor='C6EFCE')
+            elif row[0] == 'FINAL PAID':
+                c.fill = SUB_FILL
+                c.font = Font(bold=True)
+            elif r % 2 == 0: c.fill = PROP_A_FILL
+        ws.row_dimensions[r].height = 24
         r += 1
 
-    set_col_widths(ws, [18, 30, 22, 36, 22, 18, 25])
+    set_col_widths(ws, [26, 56, 22, 8, 8, 8, 8])
 
 
 def build_proposal_b(wb):
@@ -981,7 +1151,7 @@ def build_agent_examples(wb, swap=False):
         ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=18)
         r += 1
 
-        a_headers = ['Month', 'NB Tier', 'NB Per-Policy $', 'NB Target (w/ kicker)', 'REN Tier', 'REN Per-Policy $', 'REN Target (w/ kicker)', 'RWR Target (w/ kicker)', 'Total Target (no min)', 'PAID after MIN', 'Gates (NB/REN/RWR)', 'Safe Net', 'Bonus % SN', 'vs Current', 'Current Bonus', '', '', '']
+        a_headers = ['Month', 'NB base', 'NB col inc', 'NB target', 'REN base', 'REN col inc', 'REN target', 'RWR target', 'Retention', 'Total target', 'PAID after MIN', 'Gates (NB/REN/RWR)', 'Safe Net', 'vs Current', 'Current Bonus', '', '', '']
         for i, h in enumerate(a_headers, 1):
             if h:
                 style_header(ws.cell(row=r, column=i, value=h))
@@ -993,20 +1163,17 @@ def build_agent_examples(wb, swap=False):
             a = calc_proposal_a(d['NB'], d['RWR'], d['REN'])
             cur = current_bonus(d['NB'][0], d['RWR'][0])
             gates = f"{'Y' if a['nb_qual'] else 'n'}/{'Y' if a['ren_qual'] else 'n'}/{'Y' if a['rwr_qual'] else 'n'}"
-            vals = [month, a['nb_tier_label'], a['nb_per'], a['nb_target'],
-                    a['ren_tier_label'], a['ren_per'], a['ren_target'],
-                    a['rwr_target'], a['paid'], a['paid_after_min'], gates,
-                    a['safe_net'], a['bonus_pct_of_safe_net'],
-                    a['paid_after_min'] - cur, cur]
+            vals = [month, a['nb_base_pay'], a['nb_col_pay'], a['nb_target'],
+                    a['ren_base_pay'], a['ren_col_pay'], a['ren_target'],
+                    a['rwr_target'], a['retention_bonus'], a['total_target'], a['paid_after_min'], gates,
+                    a['safe_net'], a['paid_after_min'] - cur, cur]
             for i, v in enumerate(vals, 1):
                 c = ws.cell(row=r, column=i, value=v)
-                if i in (1, 2, 5, 11): style_data(c)
-                elif i == 13: style_pct(c)
-                elif i in (3, 6): style_dollar(c)
+                if i in (1, 12): style_data(c)
                 else: style_dollar(c)
                 c.fill = PROP_A_FILL
-                if i == 10: c.font = Font(bold=True)
-                if i == 11:
+                if i == 11: c.font = Font(bold=True)
+                if i == 12:
                     if a['nb_qual'] and a['ren_qual']: c.fill = PatternFill('solid', fgColor='C6EFCE')
                     elif a['nb_qual'] or a['ren_qual']: c.fill = PatternFill('solid', fgColor='FFEB9C')
                     else: c.fill = WARN_FILL
