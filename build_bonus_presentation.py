@@ -622,47 +622,134 @@ def slide_why_current_drops(prs, idx, total):
     add_bullets(s, Inches(0.7), Inches(6.0), Inches(12.0), Inches(1.2), items, font_size=13)
 
 
-def slide_agent_detail(prs, idx, total, agent, per_agent):
-    """One slide per agent: REAL + 50% SWAP + 100% FLIP, month-by-month with policy counts."""
+def slide_calc_walkthrough(prs, idx, total):
+    """One concrete worked example showing exactly how the bonus is calculated in each scenario."""
     s = add_slide(prs)
-    header_strip(s, f"{agent} - Month by Month, All Three Scenarios",
-                 f"Bonuses use the recommended Plan B WITH ${NB_MIN_PREMIUM:,} NB / ${REN_MIN_PREMIUM:,} REN minimums.")
+    header_strip(s, "Step-By-Step: How the Bonus Is Calculated",
+                 "Worked example: Dialinerys Dieguez, March 2026. Same agent, same month, three scenarios.")
     footer(s, idx, total)
 
-    scenarios = [('REAL (today)', lambda d: d, Inches(0.3), LIGHT_GRAY),
-                 ('50% SWAP (RWR->REN)', lambda d: swap_rwr_to_ren(d, 0.5), Inches(4.62), LIGHT_BLUE),
-                 ('100% FLIP (RWR<->REN)', full_flip, Inches(8.94), LIGHT_GOLD)]
-    for title, sfn, left, hi in scenarios:
-        add_text(s, left, Inches(1.1), Inches(4.3), Inches(0.3),
-                 title, font_size=14, bold=True, color=NAVY)
-        rows = [["Month", "NB", "RWR", "REN", "Current", "B w/MIN"]]
+    d = AGENTS['Dialinerys Dieguez']['March']
+    ds = swap_rwr_to_ren(d, 0.5)
+    df = full_flip(d)
+
+    # Three columns side by side, each showing the full calc
+    scenarios = [
+        ('REAL (today)', d, Inches(0.3), LIGHT_GRAY, NAVY),
+        ('50% SWAP', ds, Inches(4.62), LIGHT_BLUE, ACCENT_BLUE),
+        ('100% FLIP', df, Inches(8.94), LIGHT_GOLD, GOLD),
+    ]
+    for sc_name, scd, left, fill, hdr in scenarios:
+        nb_c, nb_p, nb_col = scd['NB']
+        rwr_c, rwr_p, rwr_col = scd['RWR']
+        ren_c, ren_p, ren_col = scd['REN']
+        nb_pct = nb_col/nb_p if nb_p else 0
+        rwr_pct = rwr_col/rwr_p if rwr_p else 0
+        ren_pct = ren_col/ren_p if ren_p else 0
+        from build_bonus_workbook import kicker as kfn
+        nb_k = kfn(nb_pct); rwr_k = kfn(rwr_pct); ren_k = kfn(ren_pct)
+        nb_t = (nb_c * 11 + nb_c * 0.35 * 6) * nb_k
+        ren_t = (ren_c * 7 + ren_c * 0.30 * 3) * ren_k
+        rwr_t = rwr_c * 2 * rwr_k
+        nb_ok = nb_p >= NB_MIN_PREMIUM
+        ren_ok = ren_p >= REN_MIN_PREMIUM
+        rwr_ok = nb_ok and ren_ok
+        nb_paid = nb_t if nb_ok else 0
+        ren_paid = ren_t if ren_ok else 0
+        rwr_paid = rwr_t if rwr_ok else 0
+        total_paid = nb_paid + ren_paid + rwr_paid
+
+        # Header strip
+        add_bar(s, left, Inches(1.1), Inches(4.05), Inches(0.4), hdr)
+        add_text(s, left, Inches(1.1), Inches(4.05), Inches(0.4),
+                 sc_name, font_size=14, bold=True, color=WHITE,
+                 align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+
+        # Card body
+        add_bar(s, left, Inches(1.5), Inches(4.05), Inches(5.5), fill)
+        y = Inches(1.55)
+        line_h = Inches(0.235)
+        lines = [
+            (f"Volume:", True, hdr),
+            (f"  NB: {nb_c} policies", False, BLACK),
+            (f"  ${nb_p:,.0f} written / ${nb_col:,.0f} coll", False, BLACK),
+            (f"  collected % = {nb_pct*100:.1f}%", False, BLACK),
+            (f"  RWR: {rwr_c}, ${rwr_p:,.0f} W / ${rwr_col:,.0f} C", False, BLACK),
+            (f"  REN: {ren_c}, ${ren_p:,.0f} W / ${ren_col:,.0f} C", False, BLACK),
+            ("", False, BLACK),
+            ("Calculate per line:", True, hdr),
+            (f"  NB = {nb_c}x($11+0.35x$6)x{nb_k:.2f}", False, BLACK),
+            (f"     = {nb_c}x$13.10 x {nb_k:.2f} = ${nb_t:.0f}", False, NAVY),
+            (f"  REN = {ren_c}x($7+0.30x$3)x{ren_k:.2f}", False, BLACK),
+            (f"      = {ren_c}x$7.90 x {ren_k:.2f} = ${ren_t:.0f}", False, NAVY),
+            (f"  RWR = {rwr_c}x$2x{rwr_k:.2f} = ${rwr_t:.0f}", False, NAVY),
+            (f"  TARGET = ${nb_t+ren_t+rwr_t:.0f}", True, NAVY),
+            ("", False, BLACK),
+            ("Apply gates:", True, hdr),
+            (f"  NB ${nb_p/1000:.0f}k vs ${NB_MIN_PREMIUM/1000:.0f}k min: {'PASS' if nb_ok else 'FAIL'}", False, GREEN if nb_ok else RED),
+            (f"  REN ${ren_p/1000:.0f}k vs ${REN_MIN_PREMIUM/1000:.0f}k min: {'PASS' if ren_ok else 'FAIL'}", False, GREEN if ren_ok else RED),
+            (f"  RWR (both pass?): {'PASS' if rwr_ok else 'FAIL'}", False, GREEN if rwr_ok else RED),
+            ("", False, BLACK),
+            (f"PAID = ${total_paid:.0f}", True, hdr),
+        ]
+        for txt, b, c in lines:
+            add_text(s, left + Inches(0.1), y, Inches(3.85), line_h, txt,
+                     font_size=10, bold=b, color=c)
+            y += line_h
+
+
+def slide_agent_detail(prs, idx, total, agent, per_agent):
+    """One slide per agent: 3 scenarios stacked, with policy counts AND written + collected premium."""
+    s = add_slide(prs)
+    header_strip(s, f"{agent} - Month by Month, All Three Scenarios",
+                 f"All values are Plan B WITH MIN (recommended). $W = written premium, $C = collected.")
+    footer(s, idx, total)
+
+    scenarios = [
+        ('REAL (today)', lambda d: d, LIGHT_GRAY, NAVY),
+        ('50% SWAP (RWR->REN)', lambda d: swap_rwr_to_ren(d, 0.5), LIGHT_BLUE, ACCENT_BLUE),
+        ('100% FLIP (RWR<->REN)', full_flip, LIGHT_GOLD, GOLD),
+    ]
+
+    y = Inches(1.05)
+    for sc_name, sfn, fill, hdr_color in scenarios:
+        add_text(s, Inches(0.35), y, Inches(12.7), Inches(0.28),
+                 sc_name, font_size=12, bold=True, color=hdr_color)
+        rows = [["Mo", "NB#", "NB $W", "NB $C", "RWR#", "RWR $W", "RWR $C", "REN#", "REN $W", "REN $C", "Plan B WITH MIN"]]
         cur_t = b_t = 0
+        nb_p_t = nb_c_t = rwr_p_t = rwr_c_t = ren_p_t = ren_c_t = 0
+        nb_n = rwr_n = ren_n = 0
         for month in MONTHS:
             d = sfn(AGENTS[agent][month])
             cur = current_bonus(d['NB'][0], d['RWR'][0])
             b = calc_proposal_b(d['NB'], d['RWR'], d['REN'])
-            rows.append([month[:3], str(d['NB'][0]), str(d['RWR'][0]), str(d['REN'][0]),
-                         f"${cur}", f"${b['paid_after_min']:.0f}"])
+            rows.append([month[:3], str(d['NB'][0]), f"${d['NB'][1]/1000:.0f}k", f"${d['NB'][2]/1000:.1f}k",
+                         str(d['RWR'][0]), f"${d['RWR'][1]/1000:.0f}k", f"${d['RWR'][2]/1000:.1f}k",
+                         str(d['REN'][0]), f"${d['REN'][1]/1000:.0f}k", f"${d['REN'][2]/1000:.1f}k",
+                         f"${b['paid_after_min']:.0f}"])
             cur_t += cur; b_t += b['paid_after_min']
-        rows.append(["TOTAL", "-", "-", "-", f"${cur_t}", f"${b_t:.0f}"])
-        add_table(s, left, Inches(1.45), Inches(4.2), Inches(2.4), rows,
-                  header_fill=NAVY, col_widths=[Inches(0.85), Inches(0.55), Inches(0.55), Inches(0.55),
-                                                Inches(0.85), Inches(0.85)],
-                  font_size=11, row_height_in=0.30, highlight_col=5, highlight_color=hi,
+            nb_n += d['NB'][0]; nb_p_t += d['NB'][1]; nb_c_t += d['NB'][2]
+            rwr_n += d['RWR'][0]; rwr_p_t += d['RWR'][1]; rwr_c_t += d['RWR'][2]
+            ren_n += d['REN'][0]; ren_p_t += d['REN'][1]; ren_c_t += d['REN'][2]
+        rows.append(["TOT", str(nb_n), f"${nb_p_t/1000:.0f}k", f"${nb_c_t/1000:.0f}k",
+                     str(rwr_n), f"${rwr_p_t/1000:.0f}k", f"${rwr_c_t/1000:.0f}k",
+                     str(ren_n), f"${ren_p_t/1000:.0f}k", f"${ren_c_t/1000:.0f}k",
+                     f"${b_t:.0f}"])
+        add_table(s, Inches(0.35), y + Inches(0.3), Inches(12.6), Inches(1.55), rows,
+                  header_fill=hdr_color,
+                  col_widths=[Inches(0.55), Inches(0.55), Inches(0.85), Inches(0.85),
+                              Inches(0.55), Inches(0.85), Inches(0.85),
+                              Inches(0.55), Inches(0.85), Inches(0.85),
+                              Inches(1.3)],
+                  font_size=10, row_height_in=0.255, highlight_col=10, highlight_color=fill,
                   first_col_bold=True)
+        y += Inches(1.95)
 
+    # Bottom read
     p = per_agent[agent]
-    add_bar(s, Inches(0.3), Inches(4.2), Inches(12.7), Inches(2.9), LIGHT_GRAY)
-    add_text(s, Inches(0.5), Inches(4.3), Inches(12.2), Inches(0.4),
-             "READ - what happens to this agent's pay under each scenario", font_size=14, bold=True, color=NAVY)
-    reads = [
-        f"REAL (today's behavior): Current pays ${p['cur_r']:,.0f} | Plan B WITH MIN pays ${p['b_min_r']:,.0f}.",
-        f"50% SWAP (half of rewrites become renewals): Current drops to ${p['cur_s']:,.0f} | Plan B grows to ${p['b_min_s']:,.0f}.",
-        f"100% FLIP (rewrites and renewals fully swapped): Current crashes to ${p['cur_f']:,.0f} | Plan B pays ${p['b_min_f']:,.0f}.",
-        f"The talk track: 'If you'd been renewing instead of rewriting, you would have earned ${p['b_min_f']:,.0f} - vs today's ${p['cur_r']:,.0f} for rewriting. " +
-        ('Plan B comes in higher than current pay.' if p['b_min_f'] >= p['cur_r'] else 'Plan B is close to but below current - because NB volume keeps you under a gate. Grow NB to fully unlock.'),
-    ]
-    add_bullets(s, Inches(0.5), Inches(4.8), Inches(12.2), Inches(2.3), reads, font_size=12)
+    add_text(s, Inches(0.35), Inches(7.0), Inches(12.7), Inches(0.23),
+             f"Today's current plan pays ${p['cur_r']:,.0f}. Plan B WITH MIN: REAL ${p['b_min_r']:,.0f} | SWAP ${p['b_min_s']:,.0f} | FLIP ${p['b_min_f']:,.0f}.",
+             font_size=11, bold=True, italic=True, color=NAVY, align=PP_ALIGN.CENTER)
 
 
 def slide_swap_comparison(prs, idx, total, real, swap, flip):
@@ -842,17 +929,18 @@ def build():
         lambda t: slide_safe_net(prs, 10, t),
         lambda t: slide_safe_net_real(prs, 11, t),
         lambda t: slide_why_current_drops(prs, 12, t),
+        lambda t: slide_calc_walkthrough(prs, 13, t),
     ]
     # Per-agent slides (6)
     for i, agent in enumerate(AGENT_NAMES):
-        idx = 13 + i
+        idx = 14 + i
         builders.append(lambda t, a=agent, ix=idx: slide_agent_detail(prs, ix, t, a, per_agent))
     # Remaining
     builders.extend([
-        lambda t: slide_swap_comparison(prs, 19, t, real, swap, flip),
-        lambda t: slide_profitability(prs, 20, t),
-        lambda t: slide_recommendation(prs, 21, t),
-        lambda t: slide_roadmap(prs, 22, t),
+        lambda t: slide_swap_comparison(prs, 20, t, real, swap, flip),
+        lambda t: slide_profitability(prs, 21, t),
+        lambda t: slide_recommendation(prs, 22, t),
+        lambda t: slide_roadmap(prs, 23, t),
         lambda t: slide_closing(prs),
     ])
     total = len(builders)
