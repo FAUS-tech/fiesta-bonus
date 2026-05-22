@@ -330,19 +330,20 @@ def slide_plan_a_details_new(prs, idx, total):
                  "No tiers. Flat per-policy base. Per-policy collected incentive on policies >$1,200. Plus a book retention bonus.")
     footer(s, idx, total)
 
-    # Section 1: Per-policy base - TIERED
+    # Section 1: Per-policy base - TIERED (NB and RWR only - REN is via retention bonus)
     base_data = [
-        ["Premium tier", "NB", "RWR", "REN"],
-        ["Under $1,200", "$5", "$2", "$4"],
-        ["$1,200 - $1,799", "$7", "$3", "$6"],
-        ["$1,800 - $2,499", "$10", "$4", "$8"],
-        ["$2,500 - $2,999", "$13", "$4", "$10"],
-        ["$3,000+", "$13+$2/$1k (max $25)", "$4", "$10"],
+        ["Premium tier", "NB", "RWR"],
+        ["Under $1,200", "$5", "$2"],
+        ["$1,200 - $1,799", "$7", "$3"],
+        ["$1,800 - $2,499", "$10", "$4"],
+        ["$2,500 - $2,999", "$13", "$4"],
+        ["$3,000+", "$13+$2/$1k (max $25)", "$4"],
+        ["REN (renewals)", "see Section 3", "see Section 3"],
     ]
     add_text(s, Inches(0.4), Inches(1.05), Inches(6.2), Inches(0.3),
-             "1. PER-POLICY BASE (TIERED by written premium)", font_size=13, bold=True, color=NAVY)
-    add_table(s, Inches(0.4), Inches(1.4), Inches(6.2), Inches(2.2), base_data,
-              header_fill=GREEN, col_widths=[Inches(2.0), Inches(1.7), Inches(1.0), Inches(1.5)],
+             "1. PER-POLICY BASE for NB and RWR (TIERED by written premium)", font_size=13, bold=True, color=NAVY)
+    add_table(s, Inches(0.4), Inches(1.4), Inches(6.2), Inches(2.5), base_data,
+              header_fill=GREEN, col_widths=[Inches(2.5), Inches(2.2), Inches(1.5)],
               font_size=11, row_height_in=0.32)
 
     # Section 2: Collected incentive
@@ -362,12 +363,12 @@ def slide_plan_a_details_new(prs, idx, total):
 
     # Section 3: Retention bonus
     add_text(s, Inches(0.4), Inches(3.1), Inches(12.7), Inches(0.3),
-             "3. BOOK RETENTION BONUS (paid every month, NOT gated by minimums)", font_size=13, bold=True, color=NAVY)
+             "3. RENEWALS = RETENTION BONUS ONLY (NO per-policy REN pay - avoids double-paying)", font_size=13, bold=True, color=NAVY)
     ret_data = [
         ["What it is", "Formula", "Example values"],
-        ["Scales with the agent's RENEWABLE BOOK SIZE - bigger book = bigger bonus",
-         "REN written premium x 0.5%",
-         "$50k REN -> $250/mo | $25k REN -> $125/mo | $10k REN -> $50/mo. Two agents at same retention rate but different book sizes earn DIFFERENT bonuses."],
+        ["Renewals are paid as ONE bonus scaling with the premium retained. No per-policy REN base or collected incentive.",
+         "REN written premium x 1%",
+         "$50k REN -> $500/mo | $25k REN -> $250/mo | $10k REN -> $100/mo. Bigger book + bigger premium = bigger bonus."],
     ]
     add_table(s, Inches(0.4), Inches(3.45), Inches(12.7), Inches(1.0), ret_data,
               header_fill=GOLD, col_widths=[Inches(4.5), Inches(3.0), Inches(5.2)],
@@ -723,20 +724,19 @@ def slide_calc_walkthrough(prs, idx, total):
             (f"  NB: {nb_c}, ${nb_p/1000:.0f}k W / ${nb_col/1000:.1f}k C ({a['nb_col_pct']*100:.0f}%, avg ${a['avg_nb']:,.0f})", False, BLACK),
             (f"  RWR: {rwr_c}, ${rwr_p/1000:.0f}k W / ${rwr_col/1000:.1f}k C ({a['rwr_col_pct']*100:.0f}%, avg ${a['avg_rwr']:,.0f})", False, BLACK),
             (f"  REN: {ren_c}, ${ren_p/1000:.0f}k W / ${ren_col/1000:.1f}k C ({a['ren_col_pct']*100:.0f}%, avg ${a['avg_ren']:,.0f})", False, BLACK),
-            ("Per-policy BASE (tiered):", True, hdr),
+            ("Per-policy BASE (NB & RWR only):", True, hdr),
             (f"  NB tier '{a['nb_tier_label']}': {nb_c} x ${a['nb_per']} = ${a['nb_base_pay']:.0f}", False, NAVY),
-            (f"  REN tier '{a['ren_tier_label']}': {ren_c} x ${a['ren_per']} = ${a['ren_base_pay']:.0f}", False, NAVY),
             (f"  RWR tier '{a['rwr_tier_label']}': {rwr_c} x ${a['rwr_per']} = ${a['rwr_base_pay']:.0f}", False, NAVY),
-            ("Collected incentive (>$1,200 only):", True, hdr),
+            ("Collected incentive (>$1,200 NB & RWR only):", True, hdr),
             (f"  NB +${a['nb_inc_per_policy']}/pol x {a['nb_above_1200']*100:.0f}% = ${a['nb_col_pay']:.0f}", False, NAVY),
-            (f"  REN +${a['ren_inc_per_policy']}/pol x {a['ren_above_1200']*100:.0f}% = ${a['ren_col_pay']:.0f}", False, NAVY),
             (f"  RWR +${a['rwr_inc_per_policy']}/pol x {a['rwr_above_1200']*100:.0f}% = ${a['rwr_col_pay']:.0f}", False, NAVY),
-            (f"Retention (REN ${ren_p/1000:.0f}k x 0.5%) = ${a['retention_bonus']:.0f}", True, NAVY),
+            ("Renewals paid via retention bonus only:", True, hdr),
+            (f"  Retention = REN ${ren_p/1000:.0f}k x 1% = ${a['retention_bonus']:.0f}", False, NAVY),
             (f"TARGET TOTAL = ${a['total_target']:.0f}", True, hdr),
             ("Apply gates:", True, hdr),
             (f"  NB ${nb_p/1000:.0f}k vs $45k: {'PASS' if a['nb_qual'] else 'FAIL'}", False, GREEN if a['nb_qual'] else RED),
             (f"  REN retention 75% vs 30%: {'PASS' if a['ren_qual'] else 'FAIL'}", False, GREEN if a['ren_qual'] else RED),
-            (f"  RWR (both): {'PASS' if a['rwr_qual'] else 'FAIL'}", False, GREEN if a['rwr_qual'] else RED),
+            (f"  RWR (follows NB): {'PASS' if a['rwr_qual'] else 'FAIL'}", False, GREEN if a['rwr_qual'] else RED),
             (f"PAID = ${a['paid_after_min']:.0f}", True, hdr),
         ]
         for txt, b, c in lines:

@@ -126,9 +126,9 @@ def pct_above_1200(count, prem):
 
 
 # Retention bonus parameters
-RETENTION_POOL_RATE = 0.005  # 0.5% of REN written premium per month
-                              # Pool scales with the agent's renewable book size.
-                              # An agent with $50k REN earns more than one with $25k REN.
+RETENTION_POOL_RATE = 0.01   # 1% of REN written premium - the ONLY renewal pay
+                              # Scales with book size AND premium per renewal.
+                              # NO per-policy REN base or REN collected incentive.
 RETENTION_RATE_DEFAULT = 0.75  # placeholder retention rate (actual computed from agency history)
 
 
@@ -259,14 +259,16 @@ def calc_proposal_a(nb, rwr, ren, retention_rate=RETENTION_RATE_DEFAULT):
     rwr_col_pay = rwr_c * rwr_above * rwr_inc
     rwr_target = rwr_base_pay + rwr_col_pay
 
-    ren_base_pay = ren_c * ren_per
-    ren_col_pay = ren_c * ren_above * ren_inc
-    ren_target = ren_base_pay + ren_col_pay
+    # NO per-policy REN base or collected incentive. Renewals are paid ONLY via the
+    # retention bonus (below). This avoids double-paying for renewals.
+    ren_base_pay = 0.0
+    ren_col_pay = 0.0
+    ren_target = 0.0
 
-    # Book retention bonus (separate, paid regardless of monthly gates).
-    # Scales with the agent's renewable book size (REN premium they retained this month).
-    # An agent with a $50k renewal book earns more bonus than one with a $25k book at the
-    # same retention rate.
+    # RENEWAL pay = retention bonus only. Scales with REN written premium retained.
+    # Premium matters: a $1,500 renewal contributes more than a $700 renewal. Retention
+    # rate matters: more retained = bigger REN premium = bigger bonus.
+    # At 1% rate: $50k REN -> $500 bonus, $25k REN -> $250 bonus.
     retention_bonus = ren_p * RETENTION_POOL_RATE
 
     total_target = nb_target + ren_target + rwr_target + retention_bonus
@@ -803,16 +805,17 @@ def build_proposal_a(wb):
     ws.cell(row=r, column=1).fill = SECTION_FILL
     ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=7)
     r += 1
-    headers = ['Premium tier', 'NB pays', 'RWR pays', 'REN pays', 'Plain English', '', '']
+    headers = ['Premium tier', 'NB pays', 'RWR pays', 'Plain English', '', '', '']
     for i, h in enumerate(headers, 1):
         if h: style_header(ws.cell(row=r, column=i, value=h))
     r += 1
     tier_rows = [
-        ('Under $1,200', '$5', '$2', '$4', 'Low-premium policies earn the base. Smaller bonus.'),
-        ('$1,200 - $1,799', '$7', '$3', '$6', 'Standard FL policies. The bulk of the book.'),
-        ('$1,800 - $2,499', '$10', '$4', '$8', 'Higher premium - more commission for the agency, more bonus for the agent.'),
-        ('$2,500 - $2,999', '$13', '$4', '$10', 'Strong premium business.'),
-        ('$3,000+', '$13 + $2/$1k cap $25', '$4', '$10', 'Commercial / high-end auto. Upside on big premium.'),
+        ('Under $1,200', '$5', '$2', 'Low-premium policies earn the base. Smaller bonus.'),
+        ('$1,200 - $1,799', '$7', '$3', 'Standard FL policies. The bulk of the book.'),
+        ('$1,800 - $2,499', '$10', '$4', 'Higher premium - more commission for the agency, more bonus for the agent.'),
+        ('$2,500 - $2,999', '$13', '$4', 'Strong premium business.'),
+        ('$3,000+', '$13 + $2/$1k cap $25', '$4', 'Commercial / high-end auto. Upside on big premium.'),
+        ('Renewals (REN)', 'See Section 3', 'See Section 3', 'Renewals are paid via the RETENTION BONUS only - not per-policy. See Section 3 below.'),
     ]
     for row in tier_rows:
         for i, v in enumerate(row, 1):
@@ -823,7 +826,7 @@ def build_proposal_a(wb):
     r += 1
 
     # SECTION 2 - per-policy collected incentive
-    ws.cell(row=r, column=1, value='2. PER-POLICY COLLECTED INCENTIVE (only on policies with premium > $1,200)').font = SECTION_FONT
+    ws.cell(row=r, column=1, value='2. PER-POLICY COLLECTED INCENTIVE (only on NB and RWR policies with premium > $1,200)').font = SECTION_FONT
     ws.cell(row=r, column=1).fill = SECTION_FILL
     ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=7)
     r += 1
@@ -857,10 +860,11 @@ def build_proposal_a(wb):
         if h: style_header(ws.cell(row=r, column=i, value=h))
     r += 1
     ret_rows = [
-        ('Formula', 'REN written premium x 0.5%', 'Bonus = $5 per $1,000 of REN premium the agent retained this month.'),
-        ('Scales with book size', f'A $50k REN month -> $250 bonus. A $25k REN month -> $125 bonus.', 'Bigger book = bigger bonus. Agent with 40 renewals at $50k earns more than agent with 20 renewals at $25k, even at the same retention rate.'),
-        ('Why per-dollar', 'Rewards both the renewal RATE and the BOOK SIZE', 'Agent who retains $50k of book contributes more commission to the agency. Bonus reflects that.'),
-        ('Retention Rate threshold', '>= 30% to qualify', 'Agent must retain at least 30% of their book to earn the retention bonus AND the per-policy REN bonus.'),
+        ('Formula', 'REN written premium x 1%', 'Bonus = $10 per $1,000 of REN premium the agent retained this month. This is the ONLY renewal pay - no per-policy REN base or collected incentive.'),
+        ('Scales with book SIZE', f'A $50k REN month -> $500 bonus. A $25k REN month -> $250 bonus.', 'Bigger book = bigger bonus. Agent with 40 renewals at $50k earns more than agent with 20 renewals at $25k.'),
+        ('Scales with PREMIUM', f'A $2,000 renewal contributes $20 to the bonus. A $1,000 renewal contributes $10.', 'Higher-premium renewals are worth more to the agency, so they earn more bonus.'),
+        ('Scales with RETENTION rate', 'More renewed = bigger REN premium = bigger bonus', 'Both rate and absolute volume drive the bonus through the same formula.'),
+        ('Retention rate threshold', '>= 30% to qualify', 'Agent must retain at least 30% of their book to earn the retention bonus.'),
         ('Minimum gate', 'NOT gated by NB minimum', 'Retention bonus pays regardless of monthly NB volume - it rewards keeping the book intact over time.'),
     ]
     for row in ret_rows:
@@ -882,7 +886,7 @@ def build_proposal_a(wb):
     r += 1
     extra_rows = [
         ('Monthly Minimum - NB', f'${NB_MIN_PREMIUM:,} written premium', 'NB base + NB collected paid ONLY if NB premium clears this gate this month.'),
-        ('Monthly Minimum - REN', f'Retain >= {REN_MIN_RETENTION*100:.0f}% of agent\'s book', 'REN base + REN collected paid ONLY if the agent retained at least 30% of their assigned book this month.'),
+        ('Monthly Minimum - REN', f'Retain >= {REN_MIN_RETENTION*100:.0f}% of agent\'s book', 'Retention bonus paid ONLY if the agent retained at least 30% of their assigned book this month.'),
         ('Monthly Minimum - RWR', 'NB gate met (or both)', 'RWR base + RWR collected paid ONLY if NB gate met. Meeting both NB and REN also works.'),
         ('Retention Bonus exception', 'Always paid', 'Retention bonus is paid regardless of monthly minimums - it tracks long-term book persistency.'),
         ('Chargeback', '3 months (90 days)', '100% of the paid bonus on a policy is REVERSED if the policy cancels/rewrites within 90 days of effective date.'),
@@ -914,11 +918,10 @@ def build_proposal_a(wb):
         ('Volumes', f'REN {d["REN"][0]} (${d["REN"][1]:,.0f} written, ${d["REN"][2]:,.0f} collected = {d["REN"][2]/d["REN"][1]*100:.1f}%, avg policy ${a["avg_ren"]:,.0f})', ''),
         ('NB base (tier)', f'{d["NB"][0]} policies in tier "{a["nb_tier_label"]}" x ${a["nb_per"]}', f'${a["nb_base_pay"]:.0f}'),
         ('NB collected incentive', f'~{a["nb_above_1200"]*100:.0f}% of policies >$1,200, collected {a["nb_col_pct"]*100:.0f}% -> +${a["nb_inc_per_policy"]}/policy', f'${a["nb_col_pay"]:.0f}'),
-        ('REN base (tier)', f'{d["REN"][0]} policies in tier "{a["ren_tier_label"]}" x ${a["ren_per"]}', f'${a["ren_base_pay"]:.0f}'),
-        ('REN collected incentive', f'~{a["ren_above_1200"]*100:.0f}% >$1,200, collected {a["ren_col_pct"]*100:.0f}% -> +${a["ren_inc_per_policy"]}/policy', f'${a["ren_col_pay"]:.0f}'),
+        ('REN base / collected', 'No per-policy REN pay - renewals are paid via retention bonus only', '$0'),
         ('RWR base (tier)', f'{d["RWR"][0]} policies in tier "{a["rwr_tier_label"]}" x ${a["rwr_per"]}', f'${a["rwr_base_pay"]:.0f}'),
         ('RWR collected incentive', f'~{a["rwr_above_1200"]*100:.0f}% >$1,200, collected {a["rwr_col_pct"]*100:.0f}% -> +${a["rwr_inc_per_policy"]}/policy', f'${a["rwr_col_pay"]:.0f}'),
-        ('Retention bonus', f'REN ${d["REN"][1]:,.0f} x 0.5% = ${a["retention_bonus"]:.2f}', f'${a["retention_bonus"]:.0f}'),
+        ('Retention bonus (renewal pay)', f'REN ${d["REN"][1]:,.0f} x 1% = ${a["retention_bonus"]:.2f}', f'${a["retention_bonus"]:.0f}'),
         ('Subtotal target', '(everything before gates)', f'${a["total_target"]:.0f}'),
         (f'NB gate (${NB_MIN_PREMIUM:,})', f'NB written ${d["NB"][1]:,.0f} vs ${NB_MIN_PREMIUM:,}', 'PASS' if a['nb_qual'] else 'FAIL'),
         (f'REN gate (>= {REN_MIN_RETENTION*100:.0f}% retention)', f'Assumed retention 75% vs {REN_MIN_RETENTION*100:.0f}%', 'PASS' if a['ren_qual'] else 'FAIL'),
@@ -1724,7 +1727,8 @@ def build_manual_tracker(wb):
     formula_rows = [
         ['Per-policy BASE', 'NB: <$1,200=$5 | $1,200-$1,799=$7 | $1,800-$2,499=$10 | $2,500-$2,999=$13 | $3,000+ = $13+$2/$1k cap $25', '', '', ''],
         ['Per-policy BASE', 'RWR: <$1,200=$2 | $1,200-$1,799=$3 | $1,800+=$4', '', '', ''],
-        ['Per-policy BASE', 'REN: <$1,200=$4 | $1,200-$1,799=$6 | $1,800-$2,499=$8 | $2,500+=$10', '', '', ''],
+        ['Renewals', 'NO per-policy REN. Renewals are paid via the RETENTION BONUS only.', '', '', ''],
+        ['Retention Bonus', 'REN written premium x 1% (e.g., $50k REN -> $500 bonus). Paid monthly at the agent level, not per policy.', '', '', ''],
         ['Collected incentive', 'Only on policies > $1,200 premium. 15-19%=+$1 | 20-24%=+$2 | 25-99%=+$5 | 100% PIF=+$8', '', '', ''],
         ['Minimums (monthly)', 'NB premium >= $45,000 | REN retention >= 30% of book | RWR follows NB gate', '', '', ''],
         ['Chargeback', '3 months (90 days) - bonus reversed if policy cancels/rewrites within 90 days', '', '', ''],
