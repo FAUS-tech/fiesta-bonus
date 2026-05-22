@@ -126,9 +126,10 @@ def pct_above_1200(count, prem):
 
 
 # Retention bonus parameters
-RETENTION_POOL_RATE = 0.01   # 1% of REN written premium - the ONLY renewal pay
-                              # Scales with book size AND premium per renewal.
-                              # NO per-policy REN base or REN collected incentive.
+RETENTION_POOL_RATE = 0.005  # 0.5% of REN written premium - the ONLY renewal pay
+                              # = $5 per $1,000 retained
+                              # Half the rate of the highest per-policy NB tier so renewals
+                              # don't out-pay new business.
 RETENTION_RATE_DEFAULT = 0.75  # placeholder retention rate (actual computed from agency history)
 
 
@@ -209,10 +210,9 @@ def calc_proposal_a(nb, rwr, ren, retention_rate=RETENTION_RATE_DEFAULT):
          100% PIF: +$8 per policy
 
     3. Book retention BONUS (paid monthly, separate from per-policy):
-         REN written premium this month x 0.5% (or $5 per $1,000 retained)
-         Scales with the agent's RENEWABLE BOOK SIZE.
-         Agent with $50k REN gets $250 retention bonus.
-         Agent with $25k REN gets $125. Same retention rate, different book = different bonus.
+         REN written premium x 0.5% ($5 per $1,000 retained)
+         Scales with book size, premium per renewal, and retention rate.
+         Agent with $50k REN -> $250 bonus. Agent with $25k REN -> $125 bonus.
 
     4. Monthly MINIMUMS:
          NB premium >= $35,000/mo -> unlocks NB base + NB collected
@@ -268,7 +268,7 @@ def calc_proposal_a(nb, rwr, ren, retention_rate=RETENTION_RATE_DEFAULT):
     # RENEWAL pay = retention bonus only. Scales with REN written premium retained.
     # Premium matters: a $1,500 renewal contributes more than a $700 renewal. Retention
     # rate matters: more retained = bigger REN premium = bigger bonus.
-    # At 1% rate: $50k REN -> $500 bonus, $25k REN -> $250 bonus.
+    # At 0.5% rate ($5 per $1,000 retained): $50k REN -> $250 bonus, $25k REN -> $125 bonus.
     retention_bonus = ren_p * RETENTION_POOL_RATE
 
     total_target = nb_target + ren_target + rwr_target + retention_bonus
@@ -860,9 +860,9 @@ def build_proposal_a(wb):
         if h: style_header(ws.cell(row=r, column=i, value=h))
     r += 1
     ret_rows = [
-        ('Formula', 'REN written premium x 1%', 'Bonus = $10 per $1,000 of REN premium the agent retained this month. This is the ONLY renewal pay - no per-policy REN base or collected incentive.'),
-        ('Scales with book SIZE', f'A $50k REN month -> $500 bonus. A $25k REN month -> $250 bonus.', 'Bigger book = bigger bonus. Agent with 40 renewals at $50k earns more than agent with 20 renewals at $25k.'),
-        ('Scales with PREMIUM', f'A $2,000 renewal contributes $20 to the bonus. A $1,000 renewal contributes $10.', 'Higher-premium renewals are worth more to the agency, so they earn more bonus.'),
+        ('Formula', 'REN written premium x 0.5%', 'Bonus = $5 per $1,000 of REN premium retained. This is the ONLY renewal pay - no per-policy REN base or collected incentive.'),
+        ('Scales with book SIZE', f'A $50k REN month -> $250 bonus. A $25k REN month -> $125 bonus.', 'Bigger book = bigger bonus. Agent with 40 renewals at $50k earns more than agent with 20 renewals at $25k.'),
+        ('Scales with PREMIUM', f'A $2,000 renewal contributes $10 to the bonus. A $1,000 renewal contributes $5.', 'Higher-premium renewals are worth more to the agency, so they earn more bonus.'),
         ('Scales with RETENTION rate', 'More renewed = bigger REN premium = bigger bonus', 'Both rate and absolute volume drive the bonus through the same formula.'),
         ('Retention rate threshold', '>= 30% to qualify', 'Agent must retain at least 30% of their book to earn the retention bonus.'),
         ('Minimum gate', 'NOT gated by NB minimum', 'Retention bonus pays regardless of monthly NB volume - it rewards keeping the book intact over time.'),
@@ -921,7 +921,7 @@ def build_proposal_a(wb):
         ('REN base / collected', 'No per-policy REN pay - renewals are paid via retention bonus only', '$0'),
         ('RWR base (tier)', f'{d["RWR"][0]} policies in tier "{a["rwr_tier_label"]}" x ${a["rwr_per"]}', f'${a["rwr_base_pay"]:.0f}'),
         ('RWR collected incentive', f'~{a["rwr_above_1200"]*100:.0f}% >$1,200, collected {a["rwr_col_pct"]*100:.0f}% -> +${a["rwr_inc_per_policy"]}/policy', f'${a["rwr_col_pay"]:.0f}'),
-        ('Retention bonus (renewal pay)', f'REN ${d["REN"][1]:,.0f} x 1% = ${a["retention_bonus"]:.2f}', f'${a["retention_bonus"]:.0f}'),
+        ('Retention bonus (renewal pay)', f'REN ${d["REN"][1]:,.0f} x 0.5% = ${a["retention_bonus"]:.2f}', f'${a["retention_bonus"]:.0f}'),
         ('Subtotal target', '(everything before gates)', f'${a["total_target"]:.0f}'),
         (f'NB gate (${NB_MIN_PREMIUM:,})', f'NB written ${d["NB"][1]:,.0f} vs ${NB_MIN_PREMIUM:,}', 'PASS' if a['nb_qual'] else 'FAIL'),
         (f'REN gate (>= {REN_MIN_RETENTION*100:.0f}% retention)', f'Assumed retention 75% vs {REN_MIN_RETENTION*100:.0f}%', 'PASS' if a['ren_qual'] else 'FAIL'),
@@ -1728,7 +1728,7 @@ def build_manual_tracker(wb):
         ['Per-policy BASE', 'NB: <$1,200=$5 | $1,200-$1,799=$7 | $1,800-$2,499=$10 | $2,500-$2,999=$13 | $3,000+ = $13+$2/$1k cap $25', '', '', ''],
         ['Per-policy BASE', 'RWR: <$1,200=$2 | $1,200-$1,799=$3 | $1,800+=$4', '', '', ''],
         ['Renewals', 'NO per-policy REN. Renewals are paid via the RETENTION BONUS only.', '', '', ''],
-        ['Retention Bonus', 'REN written premium x 1% (e.g., $50k REN -> $500 bonus). Paid monthly at the agent level, not per policy.', '', '', ''],
+        ['Retention Bonus', 'REN written premium x 0.5% (e.g., $50k REN -> $250 bonus). Paid monthly at the agent level, not per policy.', '', '', ''],
         ['Collected incentive', 'Only on policies > $1,200 premium. 15-19%=+$1 | 20-24%=+$2 | 25-99%=+$5 | 100% PIF=+$8', '', '', ''],
         ['Minimums (monthly)', 'NB premium >= $45,000 | REN retention >= 30% of book | RWR follows NB gate', '', '', ''],
         ['Chargeback', '3 months (90 days) - bonus reversed if policy cancels/rewrites within 90 days', '', '', ''],

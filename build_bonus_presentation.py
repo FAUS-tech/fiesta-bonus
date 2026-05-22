@@ -367,8 +367,8 @@ def slide_plan_a_details_new(prs, idx, total):
     ret_data = [
         ["What it is", "Formula", "Example values"],
         ["Renewals are paid as ONE bonus scaling with the premium retained. No per-policy REN base or collected incentive.",
-         "REN written premium x 1%",
-         "$50k REN -> $500/mo | $25k REN -> $250/mo | $10k REN -> $100/mo. Bigger book + bigger premium = bigger bonus."],
+         "REN written premium x 0.5%",
+         "$50k REN -> $250/mo | $25k REN -> $125/mo | $10k REN -> $50/mo. Bigger book + bigger premium = bigger bonus."],
     ]
     add_table(s, Inches(0.4), Inches(3.45), Inches(12.7), Inches(1.0), ret_data,
               header_fill=GOLD, col_widths=[Inches(4.5), Inches(3.0), Inches(5.2)],
@@ -731,7 +731,7 @@ def slide_calc_walkthrough(prs, idx, total):
             (f"  NB +${a['nb_inc_per_policy']}/pol x {a['nb_above_1200']*100:.0f}% = ${a['nb_col_pay']:.0f}", False, NAVY),
             (f"  RWR +${a['rwr_inc_per_policy']}/pol x {a['rwr_above_1200']*100:.0f}% = ${a['rwr_col_pay']:.0f}", False, NAVY),
             ("Renewals paid via retention bonus only:", True, hdr),
-            (f"  Retention = REN ${ren_p/1000:.0f}k x 1% = ${a['retention_bonus']:.0f}", False, NAVY),
+            (f"  Retention = REN ${ren_p/1000:.0f}k x 0.5% = ${a['retention_bonus']:.0f}", False, NAVY),
             (f"TARGET TOTAL = ${a['total_target']:.0f}", True, hdr),
             ("Apply gates:", True, hdr),
             (f"  NB ${nb_p/1000:.0f}k vs $45k: {'PASS' if a['nb_qual'] else 'FAIL'}", False, GREEN if a['nb_qual'] else RED),
