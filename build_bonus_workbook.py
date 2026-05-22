@@ -577,7 +577,7 @@ def build_readme(wb):
 
 def build_executive_summary(wb):
     ws = wb.create_sheet('Executive Summary')
-    ws['A1'] = 'Executive Summary - Current vs Plan A vs Plan B'
+    ws['A1'] = 'Executive Summary - Current Plan vs The Bonus Plan'
     ws['A1'].font = TITLE_FONT
     ws.merge_cells('A1:M1')
 
@@ -588,9 +588,9 @@ def build_executive_summary(wb):
     ws.merge_cells('A2:M2')
 
     # Pre-compute totals for headline - REAL, 50% SWAP, 100% FLIP
-    head_real = {'cur': 0, 'a': 0, 'a_min': 0, 'b': 0, 'b_min': 0}
-    head_swap = {'cur': 0, 'a': 0, 'a_min': 0, 'b': 0, 'b_min': 0}
-    head_flip = {'cur': 0, 'a': 0, 'a_min': 0, 'b': 0, 'b_min': 0}
+    head_real = {'cur': 0, 'a': 0, 'a_min': 0}
+    head_swap = {'cur': 0, 'a': 0, 'a_min': 0}
+    head_flip = {'cur': 0, 'a': 0, 'a_min': 0}
     for agent in AGENT_NAMES:
         for month in MONTHS:
             real = AGENTS[agent][month]
@@ -602,15 +602,9 @@ def build_executive_summary(wb):
             ra = calc_proposal_a(real['NB'], real['RWR'], real['REN'])
             sa = calc_proposal_a(swap['NB'], swap['RWR'], swap['REN'])
             fa = calc_proposal_a(flip['NB'], flip['RWR'], flip['REN'])
-            rb = calc_proposal_b(real['NB'], real['RWR'], real['REN'])
-            sb = calc_proposal_b(swap['NB'], swap['RWR'], swap['REN'])
-            fb = calc_proposal_b(flip['NB'], flip['RWR'], flip['REN'])
             head_real['a']  += ra['paid'];  head_real['a_min']  += ra['paid_after_min']
             head_swap['a']  += sa['paid'];  head_swap['a_min']  += sa['paid_after_min']
             head_flip['a']  += fa['paid'];  head_flip['a_min']  += fa['paid_after_min']
-            head_real['b']  += rb['paid'];  head_real['b_min']  += rb['paid_after_min']
-            head_swap['b']  += sb['paid'];  head_swap['b_min']  += sb['paid_after_min']
-            head_flip['b']  += fb['paid'];  head_flip['b_min']  += fb['paid_after_min']
 
     # HEADLINE block - three scenarios side-by-side
     r = 4
@@ -626,10 +620,8 @@ def build_executive_summary(wb):
 
     head_rows = [
         ('Current plan (today)', head_real['cur'], head_swap['cur'], head_flip['cur'], 'DROPS hard - the current plan only counts NB+RWR, so any shift toward REN cuts the bonus.'),
-        ('Plan A - no minimum', head_real['a'], head_swap['a'], head_flip['a'], 'Grows steadily as behavior shifts toward renewals.'),
-        (f'Plan A WITH ${NB_MIN_PREMIUM/1000:.0f}k/${REN_MIN_PREMIUM/1000:.0f}k MIN', head_real['a_min'], head_swap['a_min'], head_flip['a_min'], 'Same direction - REN gate unlocks as renewals build.'),
-        ('Plan B - no minimum', head_real['b'], head_swap['b'], head_flip['b'], 'Best motivator - 100% flip pays ABOVE today\'s current pay.'),
-        (f'Plan B WITH ${NB_MIN_PREMIUM/1000:.0f}k/${REN_MIN_PREMIUM/1000:.0f}k MIN (RECOMMENDED)', head_real['b_min'], head_swap['b_min'], head_flip['b_min'], '100% flip pays ~current pay. Behavior change = pay holds steady.'),
+        ('The Bonus Plan - no minimum', head_real['a'], head_swap['a'], head_flip['a'], 'The calculated target before applying minimums.'),
+        (f'The Bonus Plan WITH MIN (RECOMMENDED)', head_real['a_min'], head_swap['a_min'], head_flip['a_min'], f'${NB_MIN_PREMIUM:,} NB premium + {REN_MIN_RETENTION*100:.0f}% retention gates. RWR follows NB gate.'),
     ]
     for row in head_rows:
         for i, v in enumerate(row, 1):
@@ -642,8 +634,7 @@ def build_executive_summary(wb):
             else:
                 style_data(c)
             if 'Current' in row[0]: c.fill = CURRENT_FILL
-            elif 'Plan A' in row[0]: c.fill = PROP_A_FILL
-            elif 'Plan B' in row[0]: c.fill = PROP_B_FILL
+            else: c.fill = PROP_A_FILL
         ws.row_dimensions[r].height = 30
         r += 1
 
@@ -660,30 +651,26 @@ def build_executive_summary(wb):
 
     # Two scenario blocks: REAL, then 50% SWAP
     headers = ['Month', 'Agent', 'NB', 'RWR', 'REN', 'Current',
-               'A no-min', 'A with min', 'B no-min', 'B with min',
-               'A-min vs Current', 'B-min vs Current']
+               'Plan no-min', 'Plan WITH MIN', 'vs Current']
     ws.cell(row=r, column=1, value='SCENARIO 1: REAL DATA (Jan-Apr 2026)').font = SECTION_FONT
     ws.cell(row=r, column=1).fill = SECTION_FILL
-    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=12)
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=9)
     r += 1
     for i, h in enumerate(headers, 1):
         c = ws.cell(row=r, column=i, value=h)
         style_header(c)
     r += 1
 
-    real_totals = {'current': 0, 'a': 0, 'a_min': 0, 'b': 0, 'b_min': 0}
+    real_totals = {'current': 0, 'a': 0, 'a_min': 0}
     for month in MONTHS:
         for agent in AGENT_NAMES:
             d = AGENTS[agent][month]
             nb_c, rwr_c, ren_c = d['NB'][0], d['RWR'][0], d['REN'][0]
             cur = current_bonus(nb_c, rwr_c)
             a = calc_proposal_a(d['NB'], d['RWR'], d['REN'])
-            b = calc_proposal_b(d['NB'], d['RWR'], d['REN'])
             row_vals = [month, agent, nb_c, rwr_c, ren_c, cur,
                         a['paid'], a['paid_after_min'],
-                        b['paid'], b['paid_after_min'],
-                        a['paid_after_min'] - cur,
-                        b['paid_after_min'] - cur]
+                        a['paid_after_min'] - cur]
             for i, v in enumerate(row_vals, 1):
                 c = ws.cell(row=r, column=i, value=v)
                 if i in (3,4,5):
@@ -694,24 +681,17 @@ def build_executive_summary(wb):
                     style_data(c)
                 if i == 7: c.fill = PROP_A_FILL
                 if i == 8: c.fill = PROP_A_FILL; c.font = Font(bold=True)
-                if i == 9: c.fill = PROP_B_FILL
-                if i == 10: c.fill = PROP_B_FILL; c.font = Font(bold=True)
             real_totals['current'] += cur
             real_totals['a'] += a['paid']
             real_totals['a_min'] += a['paid_after_min']
-            real_totals['b'] += b['paid']
-            real_totals['b_min'] += b['paid_after_min']
             r += 1
 
     ws.cell(row=r, column=1, value='REAL 4-MONTH TOTAL (6 agents)').font = Font(bold=True)
     ws.cell(row=r, column=6, value=real_totals['current'])
     ws.cell(row=r, column=7, value=real_totals['a'])
     ws.cell(row=r, column=8, value=real_totals['a_min'])
-    ws.cell(row=r, column=9, value=real_totals['b'])
-    ws.cell(row=r, column=10, value=real_totals['b_min'])
-    ws.cell(row=r, column=11, value=real_totals['a_min'] - real_totals['current'])
-    ws.cell(row=r, column=12, value=real_totals['b_min'] - real_totals['current'])
-    for i in range(6, 13):
+    ws.cell(row=r, column=9, value=real_totals['a_min'] - real_totals['current'])
+    for i in range(6, 10):
         c = ws.cell(row=r, column=i)
         style_dollar(c)
         c.font = Font(bold=True)
@@ -722,26 +702,23 @@ def build_executive_summary(wb):
     # SCENARIO 2: 50% SWAP
     ws.cell(row=r, column=1, value='SCENARIO 2: 50% OF RWR CONVERTED TO REN (future-state target)').font = SECTION_FONT
     ws.cell(row=r, column=1).fill = SECTION_FILL
-    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=12)
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=9)
     r += 1
     for i, h in enumerate(headers, 1):
         c = ws.cell(row=r, column=i, value=h)
         style_header(c)
     r += 1
 
-    swap_totals = {'current': 0, 'a': 0, 'a_min': 0, 'b': 0, 'b_min': 0}
+    swap_totals = {'current': 0, 'a': 0, 'a_min': 0}
     for month in MONTHS:
         for agent in AGENT_NAMES:
             d = swap_rwr_to_ren(AGENTS[agent][month], 0.5)
             nb_c, rwr_c, ren_c = d['NB'][0], d['RWR'][0], d['REN'][0]
             cur = current_bonus(nb_c, rwr_c)
             a = calc_proposal_a(d['NB'], d['RWR'], d['REN'])
-            b = calc_proposal_b(d['NB'], d['RWR'], d['REN'])
             row_vals = [month, agent, nb_c, rwr_c, ren_c, cur,
                         a['paid'], a['paid_after_min'],
-                        b['paid'], b['paid_after_min'],
-                        a['paid_after_min'] - cur,
-                        b['paid_after_min'] - cur]
+                        a['paid_after_min'] - cur]
             for i, v in enumerate(row_vals, 1):
                 c = ws.cell(row=r, column=i, value=v)
                 if i in (3,4,5):
@@ -752,24 +729,17 @@ def build_executive_summary(wb):
                     style_data(c)
                 if i == 7: c.fill = PROP_A_FILL
                 if i == 8: c.fill = PROP_A_FILL; c.font = Font(bold=True)
-                if i == 9: c.fill = PROP_B_FILL
-                if i == 10: c.fill = PROP_B_FILL; c.font = Font(bold=True)
             swap_totals['current'] += cur
             swap_totals['a'] += a['paid']
             swap_totals['a_min'] += a['paid_after_min']
-            swap_totals['b'] += b['paid']
-            swap_totals['b_min'] += b['paid_after_min']
             r += 1
 
     ws.cell(row=r, column=1, value='SWAP 4-MONTH TOTAL (6 agents)').font = Font(bold=True)
     ws.cell(row=r, column=6, value=swap_totals['current'])
     ws.cell(row=r, column=7, value=swap_totals['a'])
     ws.cell(row=r, column=8, value=swap_totals['a_min'])
-    ws.cell(row=r, column=9, value=swap_totals['b'])
-    ws.cell(row=r, column=10, value=swap_totals['b_min'])
-    ws.cell(row=r, column=11, value=swap_totals['a_min'] - swap_totals['current'])
-    ws.cell(row=r, column=12, value=swap_totals['b_min'] - swap_totals['current'])
-    for i in range(6, 13):
+    ws.cell(row=r, column=9, value=swap_totals['a_min'] - swap_totals['current'])
+    for i in range(6, 10):
         c = ws.cell(row=r, column=i)
         style_dollar(c)
         c.font = Font(bold=True)
@@ -780,24 +750,24 @@ def build_executive_summary(wb):
     # Final read
     ws.cell(row=r, column=1, value='OWNERSHIP READ').font = SECTION_FONT
     ws.cell(row=r, column=1).fill = SECTION_FILL
-    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=12)
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=9)
     r += 1
     reads = [
-        f"REAL DATA TODAY: Current pays ${real_totals['current']:,.0f} (broken plan, rewards rewriting). Plan B WITH MIN pays ${real_totals['b_min']:,.0f} (less, because agents don't have enough renewals yet to clear the REN gate).",
-        f"100% FLIP - 'if you had been renewing instead of rewriting': Plan B WITH MIN pays ${head_flip['b_min']:,.0f} - essentially MATCHES today's current pay of ${real_totals['current']:,.0f}. Agent earns same dollars for doing the RIGHT behavior.",
-        f"WHY CURRENT DROPS WHEN BEHAVIOR SHIFTS: today's plan pays $0 for renewals - it only counts NB+RWR toward the 35-policy tier. When rewrites convert to renewals, the count drops, the bonus drops. Under FLIP, current crashes to ${head_flip['cur']:,.0f}. New plans pay $6-$12 per REN, so behavior shift GROWS pay.",
+        f"REAL DATA TODAY: Current pays ${real_totals['current']:,.0f} (broken plan, rewards rewriting). The Bonus Plan WITH MIN pays ${real_totals['a_min']:,.0f} (less, because few agents clear the $45k NB gate today).",
+        f"100% FLIP - 'if you had been renewing instead of rewriting': The Bonus Plan WITH MIN pays ${head_flip['a_min']:,.0f} ({head_flip['a_min']/real_totals['current']*100:.0f}% of today's $12,220 current). Agent earns close to today for doing the RIGHT behavior.",
+        f"WHY CURRENT DROPS WHEN BEHAVIOR SHIFTS: today's plan pays $0 for renewals - it only counts NB+RWR toward the 35-policy tier. When rewrites convert to renewals, the count drops, the bonus drops. Under FLIP, current crashes to ${head_flip['cur']:,.0f}. The new plan pays for renewals, so behavior shift GROWS pay.",
         f"PROFIT PROTECTION: Pay = target. Review threshold flags months above 40% of safe net. 90-day chargeback reverses any bonus on a policy that cancels/rewrites within 90 days. Minimums add a third layer: NB ${NB_MIN_PREMIUM:,}/mo + retention >= {REN_MIN_RETENTION*100:.0f}% of book or no bonus that month.",
-        f"RECOMMENDATION: The Plan (Plan A) with ${NB_MIN_PREMIUM:,} NB + {REN_MIN_RETENTION*100:.0f}% retention minimums. Pilot 90 days side-by-side with the current plan (pay the higher of the two), then switch over.",
+        f"RECOMMENDATION: The Bonus Plan with ${NB_MIN_PREMIUM:,} NB + {REN_MIN_RETENTION*100:.0f}% retention minimums. Pilot 90 days side-by-side with the current plan (pay the higher of the two), then switch over.",
     ]
     for txt in reads:
         c = ws.cell(row=r, column=1, value=txt)
         c.font = Font(size=11)
         c.alignment = Alignment(wrap_text=True, vertical='top')
-        ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=12)
+        ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=9)
         ws.row_dimensions[r].height = 44
         r += 1
 
-    set_col_widths(ws, [12, 22, 7, 7, 7, 11, 11, 12, 11, 12, 14, 14])
+    set_col_widths(ws, [12, 22, 7, 7, 7, 11, 13, 14, 13])
     ws.freeze_panes = 'C6'
 
 
