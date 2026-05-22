@@ -525,60 +525,53 @@ def build_readme(wb):
     rows = [
         ('', ''),
         ('===== TL;DR (read this first) =====', ''),
-        ('What this is', 'A proposal for a new agent bonus plan. The current plan rewards REWRITING customers (bad for retention). The new plan rewards writing new business AND keeping customers (renewing) AND collecting more money up-front AND selling good coverage.'),
-        ('Bottom line (4-month total, 6 agents)', 'TODAY: $12,220 paid out under current plan. RECOMMENDED Plan B with $35k/$20k minimums: $3,766 today (less, because agents still rewriting), $7,578 if half the rewrites become renewals, $10,545 if all rewrites had been renewals (86% of today). The new plan pays LESS for the wrong behavior and CLOSE TO TODAY for the right behavior.'),
-        ('Recommendation', 'Plan B (Coverage-Based) with $35,000 NB / $20,000 REN monthly minimums. Pilot 90 days side-by-side with the current plan, pay agents the HIGHER of the two during the pilot.'),
-        ('How to read the rest', 'Start with Executive Summary -> Plan B Rules -> Agent Examples. Use Glossary below to look up terms (NB, RWR, REN, BI, UM, PIF, FLIP, SWAP, etc.).'),
+        ('What this is', 'A proposal for a new agent bonus plan. The current plan rewards REWRITING customers (bad for retention). The new plan rewards writing new business AND keeping customers (renewing) AND collecting more money up-front.'),
+        ('Bottom line (4-month total, 6 agents)', 'TODAY: $12,220 paid out under current plan. NEW PLAN with $45k NB / 30% retention minimums: $2,419 today (less, because agents still rewriting heavily), $4,725 if half the rewrites become renewals, $6,475 if all rewrites had been renewals. The new plan pays LESS when agents do the WRONG behavior and rewards the SHIFT to renewing.'),
+        ('Recommendation', f'Adopt the new plan with ${NB_MIN_PREMIUM:,} NB monthly minimum + {REN_MIN_RETENTION*100:.0f}% retention minimum. Pilot 90 days side-by-side with the current plan, pay agents the HIGHER of the two during the pilot.'),
+        ('How to read the rest', 'Start with Executive Summary -> The Bonus Plan -> Agent Examples. Use Glossary below to look up terms (NB, RWR, REN, PIF, FLIP, SWAP, etc.).'),
         ('', ''),
         ('===== GLOSSARY =====', ''),
         ('NB', 'NEW BUSINESS - first time the customer is on the books. Brand new policy.'),
         ('RWR', 'REWRITE - cancel an existing policy and write a NEW one (usually at a different carrier). Customer ends up with a brand new 6-month term. Churns the book.'),
         ('REN', 'RENEWAL - the existing policy renews at the SAME carrier. Customer stays put.'),
         ('PIF', 'PAID IN FULL - customer pays the entire premium upfront. Zero chargeback risk.'),
-        ('BI', 'BODILY INJURY liability - pays the OTHER person\'s injuries if your customer caused the accident.'),
-        ('UM', 'UNINSURED MOTORIST - pays YOUR customer\'s injuries if hit by an uninsured driver. Cannot be added without BI.'),
-        ('PIP', 'PERSONAL INJURY PROTECTION - covers your customer\'s own medical bills. Required in FL.'),
-        ('PD', 'PROPERTY DAMAGE liability - damage your customer caused to OTHER property. Required in FL.'),
-        ('Comp / Coll', 'COMPREHENSIVE / COLLISION - damage to your customer\'s OWN car. Usually required by lienholders.'),
+        ('Written premium', 'The total cost of the policy for the 6-month term.'),
         ('Collected %', 'The % of total premium the customer actually paid. Down payment / total = collected %.'),
         ('Safe Net', 'Money left in the agency after corporate royalty (21%) and overhead (30%). The bonus comes out of safe net.'),
         ('Chargeback', 'If a policy cancels mid-term, the carrier reverses unearned commission. Bonus on that policy is also reversed if cancel happens within 90 days.'),
         ('Kicker', 'Bonus multiplier based on collected %. Higher down payment = bigger multiplier.'),
         ('Minimum / Gate', 'A monthly premium threshold the agent must clear to earn that bonus line.'),
+        ('Retention Rate', 'Of the policies up for renewal this month, the % that actually renewed at the same carrier.'),
+        ('Retention Bonus', 'The single payment for renewals: REN written premium x 0.5%. Scales with book size, premium per renewal, and retention rate.'),
         ('FLIP scenario', 'Hypothetical: "what if all rewrites had been renewals?" The strongest behavior-change test.'),
         ('SWAP scenario', 'Hypothetical: "what if half the rewrites became renewals?" A realistic transition target.'),
         ('', ''),
-        ('===== THE TWO PROPOSALS =====', ''),
-        ('Proposal A - Premium-Based', 'Bonus is tiered by WRITTEN PREMIUM. Bigger premium = bigger per-policy bonus. No coverage add-ons. Simple payroll math, lower cost.'),
-        ('Proposal B - Coverage-Based (RECOMMENDED)', 'Bonus is per-policy by COVERAGE TYPE. $11 NB base + $6 if BI+UM bundle present. No premium tiers. Same collected kicker as A. Best motivator and closest to today\'s pay when behavior shifts.'),
+        ('===== THE NEW BONUS PLAN (one-paragraph summary) =====', ''),
+        ('New Business (NB)', 'Tiered per-policy base by written premium ($5 to $25), plus a collected-percent kicker for policies above $1,200 ($0/$1/$2/$5/$8 by collected band). Subject to $45,000 NB written premium monthly minimum.'),
+        ('Rewrites (RWR)', 'Flat per-policy base by tier ($2 / $3 / $4), plus the same collected kicker as NB. Paid only if the NB minimum is met (RWR follows NB).'),
+        ('Renewals (REN)', 'No per-policy pay. Renewals are paid via the RETENTION BONUS: REN written premium x 0.5% (= $5 per $1,000 retained). Paid if retention rate is at least 30%.'),
         ('', ''),
         ('===== KEY MECHANICS =====', ''),
-        ('Important Constraint', 'Do NOT mix Plan A and Plan B. They are separate models. Pick one.'),
-        ('Why Renewals Now Pay Separately', 'Today\'s plan pays nothing for renewals - so agents have no incentive to keep the customer. The new plans pay $5-$11 per renewal (REN line) so retention is finally rewarded.'),
+        ('Why Renewals Pay Differently', "Today's plan pays nothing for renewals - so agents have no incentive to keep the customer. The new plan pays a retention bonus that scales with the premium the agent retains. Bigger book + higher premium + better retention rate = bigger bonus."),
         ('Why the 50%-Swap and 100%-Flip Examples', 'Today agents are mostly rewriting. To prove the new plan rewards the shift to renewing, each agent example is ALSO run with: (a) 50% of rewrites converted to renewals, and (b) 100% of rewrites flipped to renewals. Same dollars, just reclassified.'),
         ('Profit Protection', 'Bonus paid = target (no automatic cap). Three protections instead: (1) MINIMUM REQUIREMENTS gate each bonus line, (2) 40% REVIEW THRESHOLD flags outlier months for ownership, (3) 90-DAY CHARGEBACK reverses bonus on policies that cancel/rewrite within 90 days.'),
-        ('Minimum Requirement (NEW)', f'NB minimum: ${NB_MIN_PREMIUM:,} written premium/mo. REN minimum: retain {REN_MIN_RETENTION*100:.0f}% of agent assigned book. RWR minimum: NB minimum met (paid alongside NB). Replaces today\'s 35-policy NB+RWR floor.'),
+        ('Minimum Requirements (NEW)', f'NB minimum: ${NB_MIN_PREMIUM:,} written premium/mo. REN minimum: retain {REN_MIN_RETENTION*100:.0f}% of book. RWR follows NB. Replaces today\'s 35-policy NB+RWR floor.'),
         ('', ''),
-        ('Sheet Map', ''),
-        ('  1. Executive Summary', 'Bottom-line comparison: Current vs A vs B for all 6 agents across 4 months. Real + 50% swap. Both no-min and with-min totals.'),
-        ('  2. Safe Net Explained', 'PLAIN-LANGUAGE walk-through of what safe net is, with single-policy and full-month worked numbers.'),
+        ('===== SHEET MAP =====', ''),
+        ('  1. Executive Summary', 'Bottom-line comparison: Current vs New Plan, all 6 agents across 4 months. Real + 50% swap + 100% flip scenarios. No-min and with-min totals.'),
+        ('  2. The Bonus Plan', 'The plan rules in one place: per-policy base tiers, collected kicker, retention bonus, minimums, worked example.'),
         ('  3. Minimum Requirements', f'How the ${NB_MIN_PREMIUM:,} NB and {REN_MIN_RETENTION*100:.0f}% retention gates work.'),
-        ('  4. Why Current Drops', 'Direct answer: why the current bonus drops when RWR converts to REN, even though "renewals pay more than rewrites" is true under the new plans.'),
-        ('  5. Previous vs New Detailed', 'Agent-by-agent dollar comparison: today vs no-min vs with-min, by month.'),
-        ('  6. Rules Side by Side', 'One-row-per-rule comparison of the three plans (current + A + B).'),
-        ('  7. Proposal A Rules', 'Full payout tables for the PREMIUM-based plan.'),
-        ('  8. Proposal B Rules', 'Full payout tables for the COVERAGE-based plan.'),
-        ('  9. Worked Examples', 'Hand-built single-policy walk-throughs.'),
-        ('  10. Agent Examples - Real', 'Month-by-month bonus for the 6 agents on actual Jan-Apr 2026 data, both proposals, with policy counts.'),
-        ('  11. Agent Examples - 50% Swap', 'Same 6 agents, 50% of RWR moved to REN. Shows future-state earnings.'),
-        ('  12. Real vs Swap Comparison', 'Side-by-side 4-month total delta showing the renewal-shift upside per agent.'),
-        ('  13. Coverage Bundle Logic', 'Why BI+UM is bundled and why BI alone does not qualify.'),
-        ('  14. Collected Kicker Logic', 'How the collected % multiplier works.'),
-        ('  15. Profitability Cap', 'How the safe-net review threshold protects ownership.'),
-        ('  16. Chargeback Process', '90-day cancellation/rewrite reversal procedure.'),
-        ('  17. Agent Quick Reference', 'One-page printable for the agent floor.'),
-        ('  18. Manual Tracker Template', 'Monthly template for verified bonus tracking.'),
-        ('  19. Assumptions', 'All economic and modeling assumptions in one place.'),
+        ('  4. Why Current Drops', 'Direct answer: why the current bonus drops when RWR converts to REN, even though "renewals pay more than rewrites" is true under the new plan.'),
+        ('  5. Agent Examples - Real', 'Month-by-month bonus for the 6 agents on actual Jan-Apr 2026 data.'),
+        ('  6. Agent Examples - 50% Swap', 'Same 6 agents, 50% of RWR moved to REN. Shows realistic transition earnings.'),
+        ('  7. Agent Examples - 100% Flip', 'Same 6 agents, 100% of RWR moved to REN. Strongest behavior-change test.'),
+        ('  8. Source Data', 'Raw NB/RWR/REN volumes from Jan-Apr 2026 pulled from the pivots.'),
+        ('  9. Safe Net Explained', 'Plain-language walk-through of safe net (commission - royalty - overhead).'),
+        ('  10. Collected Kicker Logic', 'How the collected % multiplier works on NB and RWR.'),
+        ('  11. Profitability Cap', 'How the 40% safe-net review threshold protects ownership.'),
+        ('  12. Chargeback Process', '90-day cancellation/rewrite reversal procedure.'),
+        ('  13. Manual Tracker Template', 'Monthly template for verified bonus tracking.'),
+        ('  14. Assumptions', 'All economic and modeling assumptions in one place.'),
     ]
     for r, (a, b) in enumerate(rows, 2):
         ws.cell(row=r, column=1, value=a)
@@ -1098,26 +1091,26 @@ def build_worked_examples(wb):
 
 
 def build_agent_examples(wb, swap=False):
-    """Detailed month-by-month per-agent worked examples for BOTH proposals (A and B)."""
+    """Detailed month-by-month per-agent worked examples under the new bonus plan."""
     name = 'Agent Examples - 50% Swap' if swap else 'Agent Examples - Real'
     ws = wb.create_sheet(name)
     ws['A1'] = f"Agent Examples - {'50% RWR converted to REN' if swap else 'REAL Jan-Apr 2026 data'}"
     ws['A1'].font = TITLE_FONT
-    ws.merge_cells('A1:R1')
+    ws.merge_cells('A1:N1')
 
     subtitle = ('Same premiums, same collected $, but 50% of each agent\'s rewrites are reclassified as renewals. Shows future-state earnings.'
                 if swap else
-                'Actual NB/RWR/REN volumes from the source data, calculated for every proposal.')
+                'Actual NB/RWR/REN volumes from the source data, calculated under the new bonus plan.')
     ws['A2'] = subtitle
     ws['A2'].font = Font(italic=True, size=10, color='666666')
-    ws.merge_cells('A2:R2')
+    ws.merge_cells('A2:N2')
 
     r = 4
     for agent in AGENT_NAMES:
         # Agent header
         ws.cell(row=r, column=1, value=agent).font = SECTION_FONT
         ws.cell(row=r, column=1).fill = SECTION_FILL
-        ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=18)
+        ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=14)
         ws.row_dimensions[r].height = 22
         r += 1
 
@@ -1125,7 +1118,7 @@ def build_agent_examples(wb, swap=False):
         vol_headers = ['Month', 'NB Count', 'NB Premium', 'NB Collected', 'NB Coll %',
                        'RWR Count', 'RWR Premium', 'RWR Collected', 'RWR Coll %',
                        'REN Count', 'REN Premium', 'REN Collected', 'REN Coll %',
-                       'Avg NB Prem', 'Avg REN Prem', 'Total Collected', 'Safe Net', 'Cap']
+                       'Avg NB Prem']
         for i, h in enumerate(vol_headers, 1):
             style_header(ws.cell(row=r, column=i, value=h))
         r += 1
@@ -1138,16 +1131,11 @@ def build_agent_examples(wb, swap=False):
             ren_c, ren_p, ren_col = d['REN']
             agent_data[month] = d
 
-            total_col = nb_col + rwr_col + ren_col
-            safe_net = total_col * BLENDED_COMM * (1 - ROYALTY) * (1 - OVERHEAD)
-            cap = safe_net * CAP_STANDARD
-
             vals = [month,
                     nb_c, nb_p, nb_col, (nb_col / nb_p if nb_p else 0),
                     rwr_c, rwr_p, rwr_col, (rwr_col / rwr_p if rwr_p else 0),
                     ren_c, ren_p, ren_col, (ren_col / ren_p if ren_p else 0),
-                    nb_p / nb_c if nb_c else 0, ren_p / ren_c if ren_c else 0,
-                    total_col, safe_net, cap]
+                    nb_p / nb_c if nb_c else 0]
             for i, v in enumerate(vals, 1):
                 c = ws.cell(row=r, column=i, value=v)
                 if i == 1: style_data(c)
@@ -1157,16 +1145,19 @@ def build_agent_examples(wb, swap=False):
             r += 1
         r += 1
 
-        # Proposal A detail
-        ws.cell(row=r, column=1, value='PROPOSAL A - PREMIUM-BASED').font = SUB_FONT
+        # THE BONUS PLAN calculation
+        ws.cell(row=r, column=1, value='THE BONUS PLAN - bonus calculation').font = SUB_FONT
         ws.cell(row=r, column=1).fill = PROP_A_FILL
-        ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=18)
+        ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=14)
         r += 1
 
-        a_headers = ['Month', 'NB base', 'NB col inc', 'NB target', 'REN base', 'REN col inc', 'REN target', 'RWR target', 'Retention', 'Total target', 'PAID after MIN', 'Gates (NB/REN/RWR)', 'Safe Net', 'vs Current', 'Current Bonus', '', '', '']
+        a_headers = ['Month', 'NB base', 'NB kicker', 'NB target',
+                     'RWR base', 'RWR kicker', 'RWR target',
+                     'Retention bonus',
+                     'Total target', 'PAID after MIN', 'Gates',
+                     'vs Current', 'Current']
         for i, h in enumerate(a_headers, 1):
-            if h:
-                style_header(ws.cell(row=r, column=i, value=h))
+            style_header(ws.cell(row=r, column=i, value=h))
         r += 1
 
         a_totals = {'paid': 0, 'paid_min': 0, 'cur': 0}
@@ -1175,17 +1166,19 @@ def build_agent_examples(wb, swap=False):
             a = calc_proposal_a(d['NB'], d['RWR'], d['REN'])
             cur = current_bonus(d['NB'][0], d['RWR'][0])
             gates = f"{'Y' if a['nb_qual'] else 'n'}/{'Y' if a['ren_qual'] else 'n'}/{'Y' if a['rwr_qual'] else 'n'}"
-            vals = [month, a['nb_base_pay'], a['nb_col_pay'], a['nb_target'],
-                    a['ren_base_pay'], a['ren_col_pay'], a['ren_target'],
-                    a['rwr_target'], a['retention_bonus'], a['total_target'], a['paid_after_min'], gates,
-                    a['safe_net'], a['paid_after_min'] - cur, cur]
+            vals = [month,
+                    a['nb_base_pay'], a['nb_col_pay'], a['nb_target'],
+                    a['rwr_base_pay'], a['rwr_col_pay'], a['rwr_target'],
+                    a['retention_bonus'],
+                    a['total_target'], a['paid_after_min'], gates,
+                    a['paid_after_min'] - cur, cur]
             for i, v in enumerate(vals, 1):
                 c = ws.cell(row=r, column=i, value=v)
-                if i in (1, 12): style_data(c)
+                if i in (1, 11): style_data(c)
                 else: style_dollar(c)
                 c.fill = PROP_A_FILL
-                if i == 11: c.font = Font(bold=True)
-                if i == 12:
+                if i == 10: c.font = Font(bold=True)
+                if i == 11:
                     if a['nb_qual'] and a['ren_qual']: c.fill = PatternFill('solid', fgColor='C6EFCE')
                     elif a['nb_qual'] or a['ren_qual']: c.fill = PatternFill('solid', fgColor='FFEB9C')
                     else: c.fill = WARN_FILL
@@ -1197,70 +1190,18 @@ def build_agent_examples(wb, swap=False):
         ws.cell(row=r, column=1, value='4-Month Total').font = Font(bold=True)
         ws.cell(row=r, column=9, value=a_totals['paid'])
         ws.cell(row=r, column=10, value=a_totals['paid_min'])
-        ws.cell(row=r, column=14, value=a_totals['paid_min'] - a_totals['cur'])
-        ws.cell(row=r, column=15, value=a_totals['cur'])
-        for i in range(1, 16):
+        ws.cell(row=r, column=12, value=a_totals['paid_min'] - a_totals['cur'])
+        ws.cell(row=r, column=13, value=a_totals['cur'])
+        for i in range(1, 14):
             c = ws.cell(row=r, column=i)
             c.fill = SUB_FILL
-            if i in (9, 10, 14, 15):
+            if i in (9, 10, 12, 13):
                 style_dollar(c)
                 c.font = Font(bold=True)
-        r += 2
+        r += 3  # spacing between agents
 
-        # Proposal B detail
-        ws.cell(row=r, column=1, value='PROPOSAL B - COVERAGE-BASED').font = SUB_FONT
-        ws.cell(row=r, column=1).fill = PROP_B_FILL
-        ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=18)
-        r += 1
-
-        b_headers = ['Month', 'NB Base ($10 x ct)', 'NB Liab Add ($5 x 35%)', 'NB Target (w/ kicker)', 'REN Base ($6 x ct)', 'REN Liab Add ($3 x 30%)', 'REN Target (w/ kicker)', 'RWR Target (w/ kicker)', 'Total Target (no min)', 'PAID after MIN', 'Gates (NB/REN/RWR)', 'Safe Net', 'Bonus % SN', 'vs Current', 'Current Bonus']
-        for i, h in enumerate(b_headers, 1):
-            style_header(ws.cell(row=r, column=i, value=h))
-        r += 1
-
-        b_totals = {'paid': 0, 'paid_min': 0, 'cur': 0}
-        for month in MONTHS:
-            d = agent_data[month]
-            b = calc_proposal_b(d['NB'], d['RWR'], d['REN'])
-            cur = current_bonus(d['NB'][0], d['RWR'][0])
-            gates = f"{'Y' if b['nb_qual'] else 'n'}/{'Y' if b['ren_qual'] else 'n'}/{'Y' if b['rwr_qual'] else 'n'}"
-            vals = [month, b['nb_base'], b['nb_liability'], b['nb_target'],
-                    b['ren_base'], b['ren_liability'], b['ren_target'],
-                    b['rwr_target'], b['paid'], b['paid_after_min'], gates,
-                    b['safe_net'], b['bonus_pct_of_safe_net'],
-                    b['paid_after_min'] - cur, cur]
-            for i, v in enumerate(vals, 1):
-                c = ws.cell(row=r, column=i, value=v)
-                if i in (1, 11): style_data(c)
-                elif i == 13: style_pct(c)
-                else: style_dollar(c)
-                c.fill = PROP_B_FILL
-                if i == 10: c.font = Font(bold=True)
-                if i == 11:
-                    if b['nb_qual'] and b['ren_qual']: c.fill = PatternFill('solid', fgColor='C6EFCE')
-                    elif b['nb_qual'] or b['ren_qual']: c.fill = PatternFill('solid', fgColor='FFEB9C')
-                    else: c.fill = WARN_FILL
-            b_totals['paid'] += b['paid']
-            b_totals['paid_min'] += b['paid_after_min']
-            b_totals['cur'] += cur
-            r += 1
-
-        ws.cell(row=r, column=1, value='4-Month Total').font = Font(bold=True)
-        ws.cell(row=r, column=9, value=b_totals['paid'])
-        ws.cell(row=r, column=10, value=b_totals['paid_min'])
-        ws.cell(row=r, column=14, value=b_totals['paid_min'] - b_totals['cur'])
-        ws.cell(row=r, column=15, value=b_totals['cur'])
-        for i in range(1, 16):
-            c = ws.cell(row=r, column=i)
-            c.fill = SUB_FILL
-            if i in (9, 10, 14, 15):
-                style_dollar(c)
-                c.font = Font(bold=True)
-        r += 2
-
-        r += 1  # spacing between agents
-
-    set_col_widths(ws, [12, 13, 14, 14, 11, 13, 14, 14, 11, 13, 14, 14, 11, 13, 13, 15, 13, 13])
+    # Column widths sized for the wider of the two tables (volume vs bonus plan).
+    set_col_widths(ws, [10, 11, 13, 13, 11, 11, 13, 16, 12, 14, 8, 12, 11, 13])
 
 
 def build_comparison(wb):
@@ -1497,10 +1438,10 @@ def build_profitability(wb):
     ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=5)
     r += 1
     why = [
-        'A hard cap on every month at a low % (e.g., 15%) would squash the proposals so much they all pay the same amount - making A, B, and C indistinguishable. That defeats the purpose of having choices.',
+        'A hard cap on every month at a low % (e.g., 15%) would squash the plan so much that it pays the same amount regardless of agent performance - defeating the incentive entirely.',
         'The 40% REVIEW threshold flags outlier months (low collection, high written premium) so ownership can act, without making the everyday bonus arbitrary.',
         'The 90-day CHARGEBACK is the actual profit protection. If a policy cancels in 90 days, the bonus is reversed. That matches carrier commission chargeback exposure exactly.',
-        'The 4-month modeled cost: Current $12,220, Proposal A $6,219, Proposal B $9,459 (no-min, target). Both new proposals are CHEAPER than the current plan even at full target.',
+        'The 4-month modeled cost: Current $12,220, New plan $6,475 at 100% FLIP (still cheaper than today AND aligns pay with the right behavior).',
     ]
     for t in why:
         c = ws.cell(row=r, column=1, value=t)
@@ -1554,16 +1495,16 @@ def build_agent_examples_flip(wb):
     ws = wb.create_sheet('Agent Examples - 100% Flip')
     ws['A1'] = "Agent Examples - 100% FLIP (if rewrites had been renewals)"
     ws['A1'].font = TITLE_FONT
-    ws.merge_cells('A1:R1')
+    ws.merge_cells('A1:N1')
     ws['A2'] = "Same premiums, same collected $, but rewrites and renewals are FULLY SWAPPED. Strongest behavior-change test."
     ws['A2'].font = Font(italic=True, size=10, color='666666')
-    ws.merge_cells('A2:R2')
+    ws.merge_cells('A2:N2')
 
     r = 4
     for agent in AGENT_NAMES:
         ws.cell(row=r, column=1, value=agent).font = SECTION_FONT
         ws.cell(row=r, column=1).fill = SECTION_FILL
-        ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=18)
+        ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=13)
         r += 1
 
         # Volume table
@@ -1591,15 +1532,17 @@ def build_agent_examples_flip(wb):
             r += 1
         r += 1
 
-        # The Plan calculation
-        ws.cell(row=r, column=1, value='THE PLAN - bonus calculation').font = SUB_FONT
+        # THE BONUS PLAN calculation
+        ws.cell(row=r, column=1, value='THE BONUS PLAN - bonus calculation under 100% FLIP').font = SUB_FONT
         ws.cell(row=r, column=1).fill = PROP_A_FILL
-        ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=18)
+        ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=13)
         r += 1
 
-        a_headers = ['Month', 'NB base', 'NB col inc', 'NB target', 'REN base', 'REN col inc', 'REN target',
-                     'RWR target', 'Retention', 'Total target', 'PAID after MIN', 'Gates (NB/REN/RWR)',
-                     'vs Current', 'Current Bonus']
+        a_headers = ['Month', 'NB base', 'NB kicker', 'NB target',
+                     'RWR base', 'RWR kicker', 'RWR target',
+                     'Retention bonus',
+                     'Total target', 'PAID after MIN', 'Gates',
+                     'vs Current', 'Current']
         for i, h in enumerate(a_headers, 1):
             style_header(ws.cell(row=r, column=i, value=h))
         r += 1
@@ -1608,20 +1551,21 @@ def build_agent_examples_flip(wb):
         for month in MONTHS:
             d = full_flip(AGENTS[agent][month])
             a = calc_proposal_a(d['NB'], d['RWR'], d['REN'])
-            # Current bonus uses post-flip counts
             cur = current_bonus(d['NB'][0], d['RWR'][0])
             gates = f"{'Y' if a['nb_qual'] else 'n'}/{'Y' if a['ren_qual'] else 'n'}/{'Y' if a['rwr_qual'] else 'n'}"
-            vals = [month, a['nb_base_pay'], a['nb_col_pay'], a['nb_target'],
-                    a['ren_base_pay'], a['ren_col_pay'], a['ren_target'],
-                    a['rwr_target'], a['retention_bonus'], a['total_target'], a['paid_after_min'], gates,
+            vals = [month,
+                    a['nb_base_pay'], a['nb_col_pay'], a['nb_target'],
+                    a['rwr_base_pay'], a['rwr_col_pay'], a['rwr_target'],
+                    a['retention_bonus'],
+                    a['total_target'], a['paid_after_min'], gates,
                     a['paid_after_min'] - cur, cur]
             for i, v in enumerate(vals, 1):
                 c = ws.cell(row=r, column=i, value=v)
-                if i in (1, 12): style_data(c)
+                if i in (1, 11): style_data(c)
                 else: style_dollar(c)
                 c.fill = PROP_A_FILL
-                if i == 11: c.font = Font(bold=True)
-                if i == 12:
+                if i == 10: c.font = Font(bold=True)
+                if i == 11:
                     if a['nb_qual'] and a['ren_qual']: c.fill = PatternFill('solid', fgColor='C6EFCE')
                     elif a['nb_qual'] or a['ren_qual']: c.fill = PatternFill('solid', fgColor='FFEB9C')
                     else: c.fill = WARN_FILL
@@ -1630,18 +1574,18 @@ def build_agent_examples_flip(wb):
             r += 1
 
         ws.cell(row=r, column=1, value='4-Month Total').font = Font(bold=True)
-        ws.cell(row=r, column=11, value=a_totals['paid_min'])
-        ws.cell(row=r, column=13, value=a_totals['paid_min'] - a_totals['cur'])
-        ws.cell(row=r, column=14, value=a_totals['cur'])
-        for i in range(1, 15):
+        ws.cell(row=r, column=10, value=a_totals['paid_min'])
+        ws.cell(row=r, column=12, value=a_totals['paid_min'] - a_totals['cur'])
+        ws.cell(row=r, column=13, value=a_totals['cur'])
+        for i in range(1, 14):
             c = ws.cell(row=r, column=i)
             c.fill = SUB_FILL
-            if i in (11, 13, 14):
+            if i in (10, 12, 13):
                 style_dollar(c)
                 c.font = Font(bold=True)
         r += 2
 
-    set_col_widths(ws, [12, 13, 14, 14, 11, 13, 14, 14, 11, 13, 14, 14, 13, 13])
+    set_col_widths(ws, [10, 11, 13, 13, 11, 11, 13, 16, 12, 14, 8, 12, 11])
 
 
 def build_source_data(wb):
@@ -1860,8 +1804,7 @@ def build_safe_net_simple(wb):
         ('5. After royalty', 'Retained x (1 - 21%)', f"${expected_retained:,.2f} x 0.79", f"${after_royalty:,.2f}", "After 21% corporate royalty"),
         ('6. SAFE NET', 'After-royalty x (1 - 30% overhead)', f"${after_royalty:,.2f} x 0.70", f"${safe_net:,.2f}", "Available for bonus + profit + taxes. Overhead is rent/tech/admin only - salaries tracked via the minimum."),
         ('7. Review threshold', 'Safe net x 40%', f"${safe_net:,.2f} x 0.40", f"${cap:,.2f}", "Bonus targets above this trigger ownership review (soft flag)"),
-        ('8. Proposal A target paid', '(from plan rules)', "Abel's January NB/REN/RWR", "$252.00", f"That is {252/safe_net*100:.0f}% of safe net - under threshold, no flag"),
-        ('9. Proposal B target paid', '(from plan rules)', "Bigger because $10 NB base", "$399.46", f"That is {399.46/safe_net*100:.0f}% of safe net - flagged for review"),
+        ('8. New plan target paid', '(from plan rules)', "Abel's January NB/REN/RWR under the new bonus plan", "$252.00", f"That is {252/safe_net*100:.0f}% of safe net - under threshold, no flag"),
     ]
     for row in abel_steps:
         for i, v in enumerate(row, 1):
@@ -2190,23 +2133,23 @@ def build_why_current_drops(wb):
     r += 1
 
     # And under the new plan
-    ws.cell(row=r, column=1, value='SAME EXAMPLE UNDER PROPOSAL B - the renewal NOW pays').font = SECTION_FONT
+    ws.cell(row=r, column=1, value='SAME EXAMPLE UNDER THE NEW BONUS PLAN - the renewal NOW pays').font = SECTION_FONT
     ws.cell(row=r, column=1).fill = SECTION_FILL
     ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=7)
     r += 1
 
-    headers2 = ['Scenario', 'NB target', 'RWR target', 'REN target', 'Total target', 'WITH MIN paid', '']
+    headers2 = ['Scenario', 'NB target', 'RWR target', 'Retention bonus', 'Total target', 'WITH MIN paid', '']
     for i, h in enumerate(headers2, 1):
         if h: style_header(ws.cell(row=r, column=i, value=h))
     r += 1
 
-    rb = calc_proposal_b(real_d['NB'], real_d['RWR'], real_d['REN'])
-    sb = calc_proposal_b(swap_d['NB'], swap_d['RWR'], swap_d['REN'])
+    rb = calc_proposal_a(real_d['NB'], real_d['RWR'], real_d['REN'])
+    sb = calc_proposal_a(swap_d['NB'], swap_d['RWR'], swap_d['REN'])
 
     new_rows = [
-        ('REAL (today)', f"${rb['nb_target']:.0f}", f"${rb['rwr_target']:.0f}", f"${rb['ren_target']:.0f}", f"${rb['paid']:.0f}", f"${rb['paid_after_min']:.0f}"),
-        ('SWAP (50% RWR -> REN)', f"${sb['nb_target']:.0f}", f"${sb['rwr_target']:.0f}", f"${sb['ren_target']:.0f}", f"${sb['paid']:.0f}", f"${sb['paid_after_min']:.0f}"),
-        ('DELTA', '', f"-${rb['rwr_target']-sb['rwr_target']:.0f}", f"+${sb['ren_target']-rb['ren_target']:.0f}", f"+${sb['paid']-rb['paid']:.0f}", f"+${sb['paid_after_min']-rb['paid_after_min']:.0f}"),
+        ('REAL (today)', f"${rb['nb_target']:.0f}", f"${rb['rwr_target']:.0f}", f"${rb['retention_bonus']:.0f}", f"${rb['paid']:.0f}", f"${rb['paid_after_min']:.0f}"),
+        ('SWAP (50% RWR -> REN)', f"${sb['nb_target']:.0f}", f"${sb['rwr_target']:.0f}", f"${sb['retention_bonus']:.0f}", f"${sb['paid']:.0f}", f"${sb['paid_after_min']:.0f}"),
+        ('DELTA', '', f"-${rb['rwr_target']-sb['rwr_target']:.0f}", f"+${sb['retention_bonus']-rb['retention_bonus']:.0f}", f"+${sb['paid']-rb['paid']:.0f}", f"+${sb['paid_after_min']-rb['paid_after_min']:.0f}"),
     ]
     for row in new_rows:
         for i, v in enumerate(row, 1):
@@ -2225,7 +2168,7 @@ def build_why_current_drops(wb):
     r += 1
     big = [
         "Under the CURRENT plan, the agency literally pays LESS when the agent does the right thing (retain instead of rewrite).",
-        "Under both new plans, the agent gets MORE for the same behavior change - because REN now pays $4-$6 per policy plus the kicker plus the bundle (Plan B).",
+        "Under the new bonus plan, the agent gets MORE for the same behavior change - because the retention bonus pays for the premium retained instead of paying $0 like today.",
         "Per-policy comparison: RWR pays $2 in new plans; REN pays $4-$6. Net per swapped policy: +$2 to +$4 of bonus. Across hundreds of policies, that adds up.",
         "Bottom line: the swap is not the cause of the drop. The current plan's design is. Switching plans fixes it.",
     ]
@@ -2490,24 +2433,18 @@ def build_assumptions(wb):
         ('Agent salary (basis for minimum)', '$3,300/mo midpoint', '$16-$22/hour x 40 hours/week = $2,773-$3,813/mo.', 'Florida P&C agent baseline.'),
         ('Blended carrier commission', '11%', 'Used for the safe-net calculation.', 'Range 8% (Bristol West) to 15% (Geico/Kemper). 11% is the book-weighted blend.'),
         ('Commission model', 'Advance + chargeback OR as-earned', 'Most carriers advance on written, charge back if unpaid. Net = collected x rate.', 'Some carriers (e.g., some MGAs) pay as-earned on collected.'),
-        ('Bonus paid', 'TARGET (no automatic cap)', 'Pay equals the calculated target. Soft review threshold only.', 'Same for A and B.'),
+        ('Bonus paid', 'TARGET (no automatic cap)', 'Pay equals the calculated target. Soft review threshold only.', '-'),
         ('Review threshold (standard)', '40% of safe net', 'If monthly target > 40% safe net, ownership reviews.', 'Most months stay below.'),
         ('Review threshold (PIF)', '55% of safe net', 'Higher because PIF has no chargeback risk.', '-'),
         ('Chargeback period (PRIMARY PROTECTION)', '90 days', 'Cancel/rewrite reversal window. The actual profit shield.', 'Matches carrier commission chargeback exposure.'),
-        ('Proposal A NB tiers', '$6 / $8 / $11 / $13 / $13+$2/$1k cap $28', 'NB pay by written premium tier.', 'Calibrated so 100% FLIP pays ~86% of today current.'),
-        ('Proposal A REN tiers', '$5 / $6 / $7', 'REN pay by written premium.', '-'),
-        ('Proposal A RWR', '$2 flat', 'No tiers, no kicker stacking.', 'Same as Proposal B.'),
-        ('Proposal B NB base', '$11 per policy', 'PIP/PD or PIP+Comp/Coll.', 'See Coverage Bundle Logic.'),
-        ('Proposal B NB liability add', '+$6 per policy with BI+UM', 'Bundled - UM cannot exist without BI.', 'BI alone does not qualify.'),
-        ('Proposal B REN base', '$7 per policy', 'Renewal base.', '-'),
-        ('Proposal B REN liability add', '+$3 per policy with BI+UM', 'Same bundle logic on REN.', '-'),
-        ('PIF add-ons', '+$9 NB / +$13 high NB / +$5 REN', 'On both Plan A and Plan B.', 'Top of all add-ons.'),
-        ('Collected kicker tiers', '15-24% / 25-49% / 50-99% / 100%', '+10% / +15% / +20% / +25%', 'Same A and B.'),
-        ('Liability adoption (NB)', '35% of NB', 'Estimated share of NB policies that carry BI+UM.', 'For aggregate modeling. Actual bonus paid per verified policy.'),
-        ('Liability adoption (REN)', '30% of REN', 'Estimated share of REN policies that carry BI+UM.', 'Same as above.'),
-        ('NB minimum', f'${NB_MIN_PREMIUM:,}/mo written premium', 'Agent must write at least this in NB to earn NB bonus.', f'38% of REAL agent-months pass this gate.'),
-        ('REN minimum', f'${REN_MIN_PREMIUM:,}/mo written premium', 'Agent must keep at least this in REN to earn REN bonus.', f'0% REAL / 75% SWAP pass this gate.'),
-        ('RWR gate', 'NB AND REN minimums both met', 'RWR bonus only pays when both NB and REN gates pass.', 'No separate RWR minimum.'),
+        ('NB per-policy base tiers', '$5 / $7 / $10 / $13 / $13+$2/$1k cap $25', 'NB pay by written premium tier.', 'Calibrated so 100% FLIP pays ~53% of today current.'),
+        ('RWR per-policy base tiers', '$2 / $3 / $4', 'RWR pay by written premium tier (no high-tier kicker).', '-'),
+        ('REN per-policy pay', 'None', 'Renewals are paid via the retention bonus only.', 'See next row.'),
+        ('Retention bonus', 'REN written premium x 0.5%', 'The single payment for renewals. Scales with book size, premium per renewal, and retention rate.', '$50k retained -> $250 bonus; $25k retained -> $125.'),
+        ('Collected kicker tiers (NB and RWR only)', '0-14% / 15-24% / 25-49% / 50-99% / 100%', '$0 / +$1 / +$2 / +$5 / +$8 per policy above $1,200 written premium', 'Per-policy dollar add-on, not a percentage.'),
+        ('NB minimum', f'${NB_MIN_PREMIUM:,}/mo written premium', 'Agent must write at least this in NB to earn NB and RWR bonus.', f'~30% of REAL agent-months pass this gate.'),
+        ('REN minimum', f'{REN_MIN_RETENTION*100:.0f}% retention rate', 'Agent must retain at least 30% of book up for renewal to earn the retention bonus.', 'Computed from agency renewal history.'),
+        ('RWR gate', 'NB minimum met', 'RWR bonus only pays when the NB gate passes.', 'No separate RWR minimum.'),
         ('Source data', 'agents_nbrwr_pivots_good_.xlsx', 'NB / RWR / REN counts and premiums for Jan-Apr 2026.', '6 agents: Abel, Dialinerys, Melissa, Flavia, Thalia, Monica.'),
         ('50% Swap scenario', '50% RWR to REN', 'Half of rewrites reclassified as renewals.', 'Premium and collected $ stay the same.'),
         ('100% Flip scenario', 'RWR <-> REN', 'Rewrites and renewals fully swapped - "if you had been renewing all along".', 'The strongest behavior-change test.'),

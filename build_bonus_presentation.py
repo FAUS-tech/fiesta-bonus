@@ -324,7 +324,7 @@ def slide_two_plans_at_a_glance(prs, idx, total):
 
 
 def slide_plan_a_details_new(prs, idx, total):
-    """New Plan A: boss-approved framework, no tiers, retention bonus."""
+    """The Bonus Plan: NB and RWR by premium tier + collected kicker, plus retention bonus for renewals."""
     s = add_slide(prs)
     header_strip(s, "THE BONUS PLAN (boss-approved framework)",
                  "No tiers. Flat per-policy base. Per-policy collected incentive on policies >$1,200. Plus a book retention bonus.")
@@ -630,24 +630,25 @@ def slide_safe_net_real(prs, idx, total):
         ["After 17.5% royalty", f"${after_royalty:,.2f}", "After corporate cut"],
         ["SAFE NET (after 40% overhead reserve)", f"${safe_net:,.2f}", "Available for bonus + profit + taxes"],
         ["Review threshold (40% of safe net)", f"${cap:,.2f}", "Bonus targets above this get flagged"],
-        ["Plan A target (no min): $252", f"${252:.2f}", f"{252/safe_net*100:.0f}% of safe net - OK"],
-        ["Plan B target (no min): $399", f"${399.46:.2f}", f"{399.46/safe_net*100:.0f}% of safe net - flagged for review"],
+        ["New plan target (no min): $252", f"${252:.2f}", f"{252/safe_net*100:.0f}% of safe net - well under threshold"],
     ]
-    add_table(s, Inches(0.5), Inches(1.2), Inches(12.3), Inches(4.5), abel_data,
+    add_table(s, Inches(0.5), Inches(1.2), Inches(12.3), Inches(4.2), abel_data,
               header_fill=NAVY, col_widths=[Inches(4.5), Inches(2.5), Inches(5.3)],
               font_size=12, row_height_in=0.40, first_col_bold=True)
 
-    add_text(s, Inches(0.5), Inches(5.9), Inches(12.3), Inches(0.5),
+    add_text(s, Inches(0.5), Inches(5.7), Inches(12.3), Inches(0.5),
              "Takeaway:", font_size=16, bold=True, color=NAVY)
-    add_text(s, Inches(0.7), Inches(6.3), Inches(12.0), Inches(0.9),
-             "$700 of safe net means Abel's January contribution can support a bonus up to ~$280 before ownership wants a second look. The actual bonus depends on the plan rules - Plan A pays $252 (under threshold), Plan B pays $399 (above threshold, flagged but not auto-cut).",
+    add_text(s, Inches(0.7), Inches(6.1), Inches(12.0), Inches(1.1),
+             f"${safe_net:,.0f} of safe net means Abel's January contribution can support a bonus up to "
+             f"~${cap:,.0f} before ownership wants a second look. Under the new plan, Abel's January target is "
+             f"$252 - about {252/safe_net*100:.0f}% of safe net, well below the 40% review threshold.",
              font_size=13, color=BLACK)
 
 
 def slide_why_current_drops(prs, idx, total):
     s = add_slide(prs)
     header_strip(s, "Why does CURRENT bonus DROP when RWR becomes REN?",
-                 "Renewals pay MORE than rewrites - but only under the new plans.")
+                 "Renewals pay MORE than rewrites - but only under the new plan.")
     footer(s, idx, total)
 
     add_text(s, Inches(0.5), Inches(1.2), Inches(12.3), Inches(0.5),
@@ -655,7 +656,7 @@ def slide_why_current_drops(prs, idx, total):
     add_text(s, Inches(0.7), Inches(1.7), Inches(12.0), Inches(1.0),
              "The CURRENT plan does NOT pay anything for renewals. It only counts NB + RWR toward the 35-policy tier. "
              "When 50% of RWR moves to REN, the NB+RWR count drops, the tier drops, the bonus drops. "
-             "Renewals 'paying more' is only true under the NEW plans (REN pays $4-$6 vs RWR $2).",
+             "Renewals 'paying more' is only true under the NEW plan, where the retention bonus pays for premium retained.",
              font_size=15, color=BLACK)
 
     add_text(s, Inches(0.5), Inches(3.0), Inches(12.3), Inches(0.5),
@@ -671,7 +672,7 @@ def slide_why_current_drops(prs, idx, total):
     sb = calc_proposal_a(swap_d['NB'], swap_d['RWR'], swap_d['REN'])
 
     data = [
-        ["Scenario", "NB", "RWR", "REN", "Current pays", "Plan B pays"],
+        ["Scenario", "NB", "RWR", "REN", "Current pays", "New plan pays"],
         [f"REAL", str(nb_r), str(rwr_r), str(ren_r), f"${cur_r}", f"${rb['paid']:.0f}"],
         [f"SWAP (50% RWR -> REN)", str(nb_s), str(rwr_s), str(ren_s), f"${cur_s}", f"${sb['paid']:.0f}"],
         ["CHANGE", "0", f"-{rwr_r-rwr_s}", f"+{ren_s-ren_r}", f"-${cur_r-cur_s} (BAD)", f"+${sb['paid']-rb['paid']:.0f} (GOOD)"],
@@ -683,9 +684,9 @@ def slide_why_current_drops(prs, idx, total):
     add_text(s, Inches(0.5), Inches(5.5), Inches(12.3), Inches(0.5),
              "Bottom line:", font_size=16, bold=True, color=NAVY)
     items = [
-        "Per swapped policy: Current loses ~$10 from the count tier. Plan B gains $4-$6 net ($4-$6 REN - $2 RWR).",
+        "Per swapped policy: Current loses ~$10 from the count tier. New plan gains via the retention bonus ($5 per $1,000 retained) and RWR step-down ($2-$4 per RWR).",
         "Under Current, the agency literally pays LESS when the agent does the right thing.",
-        "Under Plan B, the agent gets MORE for retaining instead of rewriting - the exact incentive we want.",
+        "Under the new plan, the agent gets MORE for retaining instead of rewriting - the exact incentive we want.",
     ]
     add_bullets(s, Inches(0.7), Inches(6.0), Inches(12.0), Inches(1.2), items, font_size=13)
 
@@ -749,7 +750,7 @@ def slide_agent_detail(prs, idx, total, agent, per_agent):
     """One slide per agent: 3 scenarios stacked, with policy counts AND written + collected premium."""
     s = add_slide(prs)
     header_strip(s, f"{agent} - Month by Month, All Three Scenarios",
-                 f"All values are Plan B WITH MIN (recommended). $W = written premium, $C = collected.")
+                 f"All values are NEW PLAN WITH MIN. $W = written premium, $C = collected.")
     footer(s, idx, total)
 
     scenarios = [
@@ -762,7 +763,7 @@ def slide_agent_detail(prs, idx, total, agent, per_agent):
     for sc_name, sfn, fill, hdr_color in scenarios:
         add_text(s, Inches(0.35), y, Inches(12.7), Inches(0.28),
                  sc_name, font_size=12, bold=True, color=hdr_color)
-        rows = [["Mo", "NB#", "NB $W", "NB $C", "RWR#", "RWR $W", "RWR $C", "REN#", "REN $W", "REN $C", "Plan B WITH MIN"]]
+        rows = [["Mo", "NB#", "NB $W", "NB $C", "RWR#", "RWR $W", "RWR $C", "REN#", "REN $W", "REN $C", "New plan WITH MIN"]]
         cur_t = b_t = 0
         nb_p_t = nb_c_t = rwr_p_t = rwr_c_t = ren_p_t = ren_c_t = 0
         nb_n = rwr_n = ren_n = 0
@@ -795,7 +796,7 @@ def slide_agent_detail(prs, idx, total, agent, per_agent):
     # Bottom read
     p = per_agent[agent]
     add_text(s, Inches(0.35), Inches(7.0), Inches(12.7), Inches(0.23),
-             f"Today's current plan pays ${p['cur_r']:,.0f}. Plan B WITH MIN: REAL ${p['b_min_r']:,.0f} | SWAP ${p['b_min_s']:,.0f} | FLIP ${p['b_min_f']:,.0f}.",
+             f"Today's current plan pays ${p['cur_r']:,.0f}. New plan WITH MIN: REAL ${p['b_min_r']:,.0f} | SWAP ${p['b_min_s']:,.0f} | FLIP ${p['b_min_f']:,.0f}.",
              font_size=11, bold=True, italic=True, color=NAVY, align=PP_ALIGN.CENTER)
 
 
@@ -809,29 +810,25 @@ def slide_swap_comparison(prs, idx, total, real, swap, flip):
         ["Plan", "REAL (today)", "50% SWAP", "100% FLIP", "Read"],
         ["Current plan",  f"${real['cur']:,.0f}",  f"${swap['cur']:,.0f}",  f"${flip['cur']:,.0f}",
          "CRASHES - current pays $0 for REN"],
-        ["Plan A no-min", f"${real['a']:,.0f}",   f"${swap['a']:,.0f}",   f"${flip['a']:,.0f}",
-         "Grows - new plan pays REN"],
-        ["Plan A WITH MIN", f"${real['a_min']:,.0f}", f"${swap['a_min']:,.0f}", f"${flip['a_min']:,.0f}",
-         "Grows as REN gate opens"],
-        ["Plan B no-min", f"${real['b']:,.0f}",   f"${swap['b']:,.0f}",   f"${flip['b']:,.0f}",
-         "Top motivator - FLIP exceeds today"],
-        ["Plan B WITH MIN (RECOMMENDED)", f"${real['b_min']:,.0f}", f"${swap['b_min']:,.0f}", f"${flip['b_min']:,.0f}",
-         "FLIP matches today's $12k pay"],
+        ["New plan - no minimum", f"${real['a']:,.0f}",   f"${swap['a']:,.0f}",   f"${flip['a']:,.0f}",
+         "Calculated target before applying minimums"],
+        ["New plan WITH MIN (RECOMMENDED)", f"${real['a_min']:,.0f}", f"${swap['a_min']:,.0f}", f"${flip['a_min']:,.0f}",
+         "Pays when NB >= $45k/mo and retention >= 30%"],
     ]
-    add_table(s, Inches(0.4), Inches(1.2), Inches(12.5), Inches(3.3), data,
+    add_table(s, Inches(0.4), Inches(1.2), Inches(12.5), Inches(2.4), data,
               header_fill=NAVY,
-              col_widths=[Inches(3.0), Inches(1.6), Inches(1.6), Inches(1.6), Inches(4.7)],
-              font_size=13, row_height_in=0.50, first_col_bold=True)
+              col_widths=[Inches(3.4), Inches(1.6), Inches(1.6), Inches(1.6), Inches(4.3)],
+              font_size=13, row_height_in=0.55, first_col_bold=True)
 
-    add_text(s, Inches(0.5), Inches(4.8), Inches(12.3), Inches(0.5),
+    add_text(s, Inches(0.5), Inches(4.0), Inches(12.3), Inches(0.5),
              "The headline:", font_size=18, bold=True, color=NAVY)
     items = [
         f"Current plan COLLAPSES under the flip (${flip['cur']:,.0f} vs today's ${real['cur']:,.0f}). It only rewards rewrite VOLUME.",
-        f"Plan B WITH MIN under 100% FLIP = ${flip['b_min']:,.0f}. Compare to today's current ${real['cur']:,.0f}: agents earn the SAME for doing the RIGHT behavior.",
-        f"Plan B no-min under FLIP = ${flip['b']:,.0f}, which is ABOVE today's pay. Some headroom if ownership wants to be more generous.",
-        f"The pitch to the agent: 'today you're earning ${real['cur']/6/4:.0f}/mo on rewrites. Under the new plan, when you renew instead, you earn the same dollars - but the customer stays put.'",
+        f"New plan WITH MIN under 100% FLIP = ${flip['a_min']:,.0f} ({flip['a_min']/real['cur']*100:.0f}% of today's $12,220). The agency keeps more profit while still rewarding the right behavior.",
+        f"New plan rewards what the current plan ignores: keeping the customer (retention bonus) and collecting more money upfront (kicker).",
+        f"The pitch to the agent: 'today you're earning ${real['cur']/6/4:.0f}/mo on rewrites. Under the new plan, when you renew instead, the retention bonus pays you for the premium you kept on the books.'",
     ]
-    add_bullets(s, Inches(0.7), Inches(5.3), Inches(12.0), Inches(1.9), items, font_size=13)
+    add_bullets(s, Inches(0.7), Inches(4.5), Inches(12.0), Inches(2.6), items, font_size=13)
 
 
 def slide_profitability(prs, idx, total):
@@ -873,28 +870,28 @@ def slide_recommendation(prs, idx, total):
     add_bar(s, Inches(0.5), Inches(1.2), Inches(12.3), Inches(1.5), LIGHT_GOLD)
     add_bar(s, Inches(0.5), Inches(1.2), Inches(0.25), Inches(1.5), GOLD)
     add_text(s, Inches(1.0), Inches(1.4), Inches(11.3), Inches(0.5),
-             f"THE BONUS PLAN (Plan A) - with ${NB_MIN_PREMIUM:,} NB premium + {REN_MIN_RETENTION*100:.0f}% retention minimums",
+             f"THE NEW BONUS PLAN - with ${NB_MIN_PREMIUM:,} NB premium + {REN_MIN_RETENTION*100:.0f}% retention minimums",
              font_size=22, bold=True, color=NAVY)
     add_text(s, Inches(1.0), Inches(1.9), Inches(11.3), Inches(0.75),
-             "Best balance of agent motivation, sales-story clarity, profitability protection, and pay-near-current when behavior shifts.",
+             "Balanced for agent motivation, retention upside, profit protection, and clean payroll math.",
              font_size=14, color=BLACK)
 
     add_text(s, Inches(0.5), Inches(3.0), Inches(12.3), Inches(0.5),
-             "Why Plan B over Plan A:", font_size=18, bold=True, color=NAVY)
+             "Why the new plan beats today's:", font_size=18, bold=True, color=NAVY)
     items = [
-        "Plan B has the strongest UPSELL story: 'every BI+UM bundle is worth $5'. Easy to coach, easy to defend.",
-        "Plan B pays closest to today's number when behavior shifts (close to par in SWAP scenario).",
-        "Plan B rewards coverage QUALITY - which carriers prefer and persistency improves.",
-        "Plan A is leaner (lower cost) - keep as fallback if Plan B is too generous.",
+        "Pays for RENEWALS (today's plan pays $0 for renewals) - turns retention into a paying behavior.",
+        "Pays MORE on bigger premium policies via NB tiers - aligns agent pay with agency commission.",
+        "Pays MORE on policies with higher collected % via the kicker - rewards getting cash up front.",
+        "Costs LESS at full target than today's count-tier plan - new plan FLIP $6,475 vs current $12,220.",
     ]
     add_bullets(s, Inches(0.7), Inches(3.5), Inches(12.0), Inches(2.0), items, font_size=14)
 
     add_text(s, Inches(0.5), Inches(5.7), Inches(12.3), Inches(0.5),
              "Levers to fine-tune over time:", font_size=18, bold=True, color=NAVY)
     add_text(s, Inches(0.7), Inches(6.2), Inches(12.0), Inches(1.0),
-             "1) Coverage adoption (estimated 35% of NB, 30% of REN - track actual).   "
-             "2) Minimum thresholds - softer ($25k/$15k) if too punishing, tighter ($45k/$25k) if too easy.   "
-             "3) PIF and kicker amounts to balance pay vs profit.",
+             "1) Retention bonus rate (0.5% today - dial up if too lean, down if too rich).   "
+             "2) Minimum thresholds (NB $45k / retention 30% - soften if too punishing, tighten if too easy).   "
+             "3) Per-policy NB tier amounts and collected-kicker bands.",
              font_size=13, color=DARK_GRAY)
 
 
@@ -906,9 +903,9 @@ def slide_roadmap(prs, idx, total):
 
     phases = [
         ("WEEK 1-2", "APPROVE + COMMUNICATE", ACCENT_BLUE, LIGHT_BLUE, [
-            "Ownership picks Plan A or B and signs off on minimums.",
+            "Ownership signs off on the new plan rules and minimum thresholds.",
             "Manager rolls out the rules to the agents.",
-            "Print the Agent Quick Reference (in the workbook) for each desk.",
+            "Print the Manual Tracker (in the workbook) for each desk.",
         ]),
         ("WEEK 3-6", "PILOT MONTH 1", GREEN, LIGHT_GREEN, [
             "Run the plan side-by-side with the OLD plan for ONE FULL MONTH.",
@@ -943,14 +940,14 @@ def slide_closing(prs):
     add_text(s, Inches(0.6), Inches(1.0), Inches(12.13), Inches(1.0),
              "Decision Time", font_size=54, bold=True, color=WHITE)
     add_text(s, Inches(0.6), Inches(2.0), Inches(12.13), Inches(0.8),
-             "Plan B with the new minimums.", font_size=24, color=LIGHT_BLUE)
+             "The new bonus plan with NB & retention minimums.", font_size=24, color=LIGHT_BLUE)
     add_text(s, Inches(0.6), Inches(3.8), Inches(12.13), Inches(0.5),
              "Workbook companion file:", font_size=18, color=WHITE)
     add_text(s, Inches(0.6), Inches(4.3), Inches(12.13), Inches(0.5),
              "Bonus_Plan_FINAL.xlsx",
              font_size=20, bold=True, color=LIGHT_BLUE)
     add_text(s, Inches(0.6), Inches(5.2), Inches(12.13), Inches(0.5),
-             "Two options. One decision. Ready to roll out in 10 weeks.",
+             "One plan. One decision. Ready to roll out in 10 weeks.",
              font_size=18, italic=True, color=LIGHT_BLUE)
 
 
