@@ -348,10 +348,11 @@ def slide_plan_a_details_new(prs, idx, total):
     # Section 2: Collected incentive
     inc_data = [
         ["Collected % of premium", "Extra per policy"],
-        ["Below 25%", "$0 (no incentive)"],
-        ["25% to 49%", "+$2"],
-        ["50% to 99%", "+$3"],
-        ["100% PIF", "+$5"],
+        ["Below 15%", "$0 (no incentive)"],
+        ["15% to 19%", "+$1"],
+        ["20% to 24%", "+$2"],
+        ["25% to 99%", "+$5"],
+        ["100% PIF", "+$8"],
     ]
     add_text(s, Inches(6.85), Inches(1.05), Inches(6.2), Inches(0.3),
              "2. COLLECTED INCENTIVE (only on policies > $1,200)", font_size=13, bold=True, color=NAVY)
@@ -551,12 +552,12 @@ def slide_kicker(prs, idx, total):
     footer(s, idx, total)
 
     kicker_data = [
-        ["Collected %", "Multiplier", "Plain English", "$10 target -> Pays"],
-        ["Below 15%", "x 1.00 (none)", "Premium barely collected. No kicker.", "$10.00"],
-        ["15% - 24%", "x 1.10 (+10%)", "Minimum down. Small kicker.", "$11.00"],
-        ["25% - 49%", "x 1.15 (+15%)", "Standard down. Standard kicker.", "$11.50"],
-        ["50% - 99%", "x 1.20 (+20%)", "High collection. Stronger kicker.", "$12.00"],
-        ["100% (PIF)", "x 1.25 (+25%)", "Paid in full. Top kicker.", "$12.50"],
+        ["Collected %", "Per-policy kicker", "Plain English", "$7 NB base -> Pays"],
+        ["Below 15%", "$0 (none)", "Premium barely collected. No kicker.", "$7"],
+        ["15% - 19%", "+$1", "Minimum down. Small bump.", "$7 + $1 = $8"],
+        ["20% - 24%", "+$2", "Standard down.", "$7 + $2 = $9"],
+        ["25% - 99%", "+$5", "High collection. Big bump.", "$7 + $5 = $12"],
+        ["100% PIF", "+$8", "Paid in full. Top - zero chargeback risk.", "$7 + $8 = $15"],
     ]
     add_table(s, Inches(0.5), Inches(1.3), Inches(12.3), Inches(2.8), kicker_data,
               header_fill=ACCENT_BLUE, col_widths=[Inches(2.0), Inches(2.5), Inches(5.3), Inches(2.5)],

@@ -103,11 +103,17 @@ def kicker(collected_pct):
 
 def col_inc_per_policy(pct):
     """Flat dollar per-policy collected incentive (only for policies > $1,200 premium).
-    NO TIERS in base bonus - the collected incentive is the only step structure."""
-    if pct >= 1.00: return 5   # PIF
-    if pct >= 0.50: return 3   # 50%+ collected
-    if pct >= 0.25: return 2   # 25-49% collected
-    return 0                    # below 25%: no incentive
+    Tiers (FINAL):
+       15-19% collected: +$1
+       20-24% collected: +$2
+       25-99% collected: +$5
+       100% PIF:         +$8
+    """
+    if pct >= 1.00: return 8   # PIF
+    if pct >= 0.25: return 5   # 25%+ (and not PIF)
+    if pct >= 0.20: return 2   # 20-24%
+    if pct >= 0.15: return 1   # 15-19%
+    return 0                    # below 15%
 
 
 def pct_above_1200(count, prem):
@@ -194,10 +200,11 @@ def calc_proposal_a(nb, rwr, ren, retention_rate=RETENTION_RATE_DEFAULT):
          REN tiers: <$1,200 = $4 | $1,200-$1,799 = $6 | $1,800-$2,499 = $8 | $2,500+ = $10
 
     2. Per-policy COLLECTED INCENTIVE (only on policies with premium > $1,200):
-         <25% collected: $0
-         25-49% collected: +$2 per policy
-         50-99% collected: +$3 per policy
-         100% PIF: +$5 per policy
+         <15% collected: $0
+         15-19% collected: +$1 per policy
+         20-24% collected: +$2 per policy
+         25-99% collected: +$5 per policy
+         100% PIF: +$8 per policy
 
     3. Book retention BONUS (paid monthly, separate from per-policy):
          retention_rate x $300
@@ -819,10 +826,11 @@ def build_proposal_a(wb):
         if h: style_header(ws.cell(row=r, column=i, value=h))
     r += 1
     col_rows = [
-        ('Below 25%', '$0 (no incentive)', 'Premium barely collected. No incentive.', '$1,500 policy, 15% down -> $0 incentive'),
-        ('25% to 49%', '+$2 per policy', 'Standard down. Small incentive.', '$1,500 policy, 30% down -> +$2'),
-        ('50% to 99%', '+$3 per policy', 'High collection. Higher incentive.', '$1,500 policy, 60% down -> +$3'),
-        ('100% PIF', '+$5 per policy', 'Paid in full. Zero chargeback risk. Top incentive.', '$1,500 policy PIF -> +$5'),
+        ('Below 15%', '$0 (no incentive)', 'Premium barely collected. No incentive.', '$1,500 policy, 10% down -> $0 incentive'),
+        ('15% to 19%', '+$1 per policy', 'Minimum down. Small bump.', '$1,500 policy, 17% down -> +$1'),
+        ('20% to 24%', '+$2 per policy', 'Standard down. Standard bump.', '$1,500 policy, 22% down -> +$2'),
+        ('25% to 99%', '+$5 per policy', 'High collection. Big bump.', '$1,500 policy, 30% down -> +$5'),
+        ('100% PIF', '+$8 per policy', 'Paid in full. Zero chargeback risk. Top incentive.', '$1,500 policy PIF -> +$8'),
         ('Policy with premium <= $1,200', '$0 incentive', 'Low-premium policies do not earn the incentive.', '$800 policy at 50% -> base only'),
     ]
     for row in col_rows:
@@ -1386,43 +1394,47 @@ def build_coverage_logic(wb):
 
 def build_kicker_logic(wb):
     ws = wb.create_sheet('Collected Kicker Logic')
-    ws['A1'] = 'Collected % Kicker (applies to BOTH proposals)'
+    ws['A1'] = 'Collected Incentive - per policy, flat dollars'
     ws['A1'].font = TITLE_FONT
     ws.merge_cells('A1:E1')
 
-    ws['A2'] = 'The kicker is applied to the per-policy target BEFORE the safe-net cap. It rewards collecting cash, not just writing premium.'
+    ws['A2'] = ('Per-policy flat dollar amount added to the base bonus. ONLY applies to policies with WRITTEN PREMIUM > $1,200. '
+                'A $800 policy does not earn the kicker, regardless of how much was collected.')
     ws['A2'].font = Font(italic=True, size=11, color='1F4E78')
     ws.merge_cells('A2:E2')
 
     r = 4
-    headers = ['Collected % of Premium', 'Multiplier', 'Plain English', 'Example: $10 target', 'Example after Kicker']
+    headers = ['Collected % of premium', 'Per-policy kicker', 'Plain English', 'Example: $1,500 NB base $7', 'Final per-policy pay']
     for i, h in enumerate(headers, 1):
         style_header(ws.cell(row=r, column=i, value=h))
     r += 1
 
     rows = [
-        ('Below 15%', 'x 1.00 (none)', 'Premium barely collected. No kicker.', '$10', '$10.00'),
-        ('15% - 24%', 'x 1.10 (+10%)', 'Minimum down. Small kicker.', '$10', '$11.00'),
-        ('25% - 49%', 'x 1.15 (+15%)', 'Standard down. Standard kicker.', '$10', '$11.50'),
-        ('50% - 99%', 'x 1.20 (+20%)', 'High collection. Stronger kicker.', '$10', '$12.00'),
-        ('100% (PIF)', 'x 1.25 (+25%)', 'Paid in full. Top kicker.', '$10', '$12.50'),
+        ('Below 15%', '$0 (none)', 'Premium barely collected. No kicker.', '$1,500 NB, 10% down', '$7 (base only)'),
+        ('15% - 19%', '+$1', 'Minimum down. Small bump.', '$1,500 NB, 17% down', '$7 + $1 = $8'),
+        ('20% - 24%', '+$2', 'Standard down. Standard bump.', '$1,500 NB, 22% down', '$7 + $2 = $9'),
+        ('25% - 99%', '+$5', 'High collection. Big bump.', '$1,500 NB, 30% down', '$7 + $5 = $12'),
+        ('100% PIF', '+$8', 'Paid in full. Top kicker - zero chargeback risk.', '$1,500 NB PIF', '$7 + $8 = $15'),
+        ('Premium <= $1,200', '$0 (no kicker)', 'Low-premium policies do not earn the incentive, no matter the collected %.', '$800 NB, 50% down', '$5 (base only)'),
     ]
     for row in rows:
         for i, v in enumerate(row, 1):
             c = ws.cell(row=r, column=i, value=v)
             style_data(c)
             if r % 2 == 0: c.fill = SUB_FILL
+        ws.row_dimensions[r].height = 26
         r += 1
 
     r += 2
-    ws.cell(row=r, column=1, value='Why use the collected % instead of the written premium').font = SECTION_FONT
+    ws.cell(row=r, column=1, value='Why a per-policy flat kicker').font = SECTION_FONT
     ws.cell(row=r, column=1).fill = SECTION_FILL
     ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=5)
     r += 1
     why = [
-        'Written premium is the carrier number. Collected premium is the agency number - it is the cash that actually pays commission, rent, and payroll.',
-        'Without the kicker, a policy with a $50 down looks the same as one with a $500 down. With the kicker, the agent who pushes for a bigger down earns more.',
-        'The kicker is INSIDE the cap. The cap is still 15% of safe net. So a high kicker on a low-collected policy cannot break ownership economics.',
+        'Each policy earns its own kicker based on its own collected % - not the agent\'s total collected %. A $50 down on one policy and a PIF on another are rewarded separately.',
+        'The $1,200 premium floor excludes the smallest policies. A $700 policy at 25% collected is still only $175 in cash - not enough to justify a $5 bump.',
+        'Flat dollars (not a multiplier) make the math easy to audit. Every policy line on the tracker shows: base + kicker = pay.',
+        'PIF is the top tier at +$8 because PIF policies have zero chargeback risk - the carrier already has all the money.',
     ]
     for t in why:
         c = ws.cell(row=r, column=1, value=t)
@@ -1432,7 +1444,7 @@ def build_kicker_logic(wb):
         ws.row_dimensions[r].height = 30
         r += 1
 
-    set_col_widths(ws, [22, 18, 38, 18, 22])
+    set_col_widths(ws, [22, 18, 40, 26, 22])
 
 
 def build_profitability(wb):
@@ -1687,30 +1699,62 @@ def build_source_data(wb):
 
 def build_manual_tracker(wb):
     ws = wb.create_sheet('Manual Tracker Template')
-    ws['A1'] = 'Monthly Manual Bonus Tracker - Template'
+    ws['A1'] = 'Monthly Manual Bonus Tracker - The Bonus Plan'
     ws['A1'].font = TITLE_FONT
-    ws.merge_cells('A1:T1')
+    ws.merge_cells('A1:O1')
 
-    ws['A2'] = 'One copy per month per agent. Only verified rows get paid. Use this whether running Proposal A, B, or C.'
+    ws['A2'] = ('Agents enter ONE ROW PER POLICY. Without an entry the policy does NOT get bonused. '
+                'Manager verifies fields. Per-policy bonus columns auto-calculate from the formulas below.')
     ws['A2'].font = Font(italic=True, size=11, color='1F4E78')
-    ws.merge_cells('A2:T2')
+    ws.merge_cells('A2:O2')
 
-    r = 4
-    headers = ['Agent', 'Customer', 'Policy #', 'Type', 'Carrier', 'Eff Date',
-               'Written Premium', 'Carrier Comm %', 'Collected $',
-               'BI?', 'UM?', 'BI+UM Bundle?', 'Comp?', 'Coll?', 'PIF?',
-               '90-Day Review Date', 'Target Bonus', 'Cap', 'Final Paid', 'Chargeback?']
+    # Reference panel with the bonus formulas
+    r = 3
+    ws.cell(row=r, column=1, value='THE BONUS PLAN FORMULAS (for reference)').font = SECTION_FONT
+    ws.cell(row=r, column=1).fill = SECTION_FILL
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=15)
+    r += 1
+    formula_rows = [
+        ['Per-policy BASE', 'NB: <$1,200=$5 | $1,200-$1,799=$7 | $1,800-$2,499=$10 | $2,500-$2,999=$13 | $3,000+ = $13+$2/$1k cap $25', '', '', ''],
+        ['Per-policy BASE', 'RWR: <$1,200=$2 | $1,200-$1,799=$3 | $1,800+=$4', '', '', ''],
+        ['Per-policy BASE', 'REN: <$1,200=$4 | $1,200-$1,799=$6 | $1,800-$2,499=$8 | $2,500+=$10', '', '', ''],
+        ['Collected incentive', 'Only on policies > $1,200 premium. 15-19%=+$1 | 20-24%=+$2 | 25-99%=+$5 | 100% PIF=+$8', '', '', ''],
+        ['Minimums (monthly)', 'NB premium >= $45,000 | REN retention >= 30% of book | RWR follows NB gate', '', '', ''],
+        ['Chargeback', '3 months (90 days) - bonus reversed if policy cancels/rewrites within 90 days', '', '', ''],
+    ]
+    for row in formula_rows:
+        for i, v in enumerate(row, 1):
+            c = ws.cell(row=r, column=i, value=v)
+            style_data(c)
+            c.fill = PatternFill('solid', fgColor='F2F2F2')
+        ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=15)
+        ws.row_dimensions[r].height = 22
+        r += 1
+    r += 1
+
+    # Tracker table headers
+    ws.cell(row=r, column=1, value='ONE ROW PER POLICY').font = SECTION_FONT
+    ws.cell(row=r, column=1).fill = SECTION_FILL
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=15)
+    r += 1
+
+    headers = ['Agent', 'Customer', 'Policy #', 'Carrier',
+               'Type (NB/RWR/REN)',
+               'Eff Date', 'Exp Date', '90-Day Review Date',
+               'Written Premium', 'Down Payment $', 'Collected % (calc)',
+               'PIF?', 'Per-Policy Base $', 'Collected Incentive $', 'Total Bonus $']
     for i, h in enumerate(headers, 1):
         style_header(ws.cell(row=r, column=i, value=h))
     r += 1
 
+    # Empty rows for data entry
     for _ in range(30):
-        for i in range(1, 21):
+        for i in range(1, 16):
             c = ws.cell(row=r, column=i, value='')
             style_data(c)
         r += 1
 
-    set_col_widths(ws, [16, 16, 12, 8, 14, 10, 12, 11, 12, 6, 6, 12, 6, 6, 6, 14, 11, 9, 11, 12])
+    set_col_widths(ws, [16, 16, 12, 14, 14, 11, 11, 14, 13, 13, 14, 7, 14, 16, 13])
 
 
 def build_safe_net_simple(wb):
