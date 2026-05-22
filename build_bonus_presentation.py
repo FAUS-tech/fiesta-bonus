@@ -12,7 +12,7 @@ from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 from build_bonus_workbook import (
     AGENTS, MONTHS, AGENT_NAMES, NB_MIN_PREMIUM, REN_MIN_RETENTION,
-    BLENDED_COMM, ROYALTY, OVERHEAD, CAP_STANDARD, AGENT_SALARY, RETENTION_POOL,
+    BLENDED_COMM, ROYALTY, OVERHEAD, CAP_STANDARD, AGENT_SALARY, RETENTION_POOL_RATE,
     calc_proposal_a, current_bonus, swap_rwr_to_ren, full_flip,
 )
 
@@ -365,8 +365,9 @@ def slide_plan_a_details_new(prs, idx, total):
              "3. BOOK RETENTION BONUS (paid every month, NOT gated by minimums)", font_size=13, bold=True, color=NAVY)
     ret_data = [
         ["What it is", "Formula", "Example values"],
-        ["% of NB premium written 6 months ago still on the books today", "Retention Rate x $300/mo pool",
-         "70% retention -> $210/mo | 80% -> $240/mo | 90% -> $270/mo | 100% -> $300/mo"],
+        ["Scales with the agent's RENEWABLE BOOK SIZE - bigger book = bigger bonus",
+         "REN written premium x 0.5%",
+         "$50k REN -> $250/mo | $25k REN -> $125/mo | $10k REN -> $50/mo. Two agents at same retention rate but different book sizes earn DIFFERENT bonuses."],
     ]
     add_table(s, Inches(0.4), Inches(3.45), Inches(12.7), Inches(1.0), ret_data,
               header_fill=GOLD, col_widths=[Inches(4.5), Inches(3.0), Inches(5.2)],
@@ -730,7 +731,7 @@ def slide_calc_walkthrough(prs, idx, total):
             (f"  NB +${a['nb_inc_per_policy']}/pol x {a['nb_above_1200']*100:.0f}% = ${a['nb_col_pay']:.0f}", False, NAVY),
             (f"  REN +${a['ren_inc_per_policy']}/pol x {a['ren_above_1200']*100:.0f}% = ${a['ren_col_pay']:.0f}", False, NAVY),
             (f"  RWR +${a['rwr_inc_per_policy']}/pol x {a['rwr_above_1200']*100:.0f}% = ${a['rwr_col_pay']:.0f}", False, NAVY),
-            (f"Retention (75% x $300) = ${a['retention_bonus']:.0f}", True, NAVY),
+            (f"Retention (REN ${ren_p/1000:.0f}k x 0.5%) = ${a['retention_bonus']:.0f}", True, NAVY),
             (f"TARGET TOTAL = ${a['total_target']:.0f}", True, hdr),
             ("Apply gates:", True, hdr),
             (f"  NB ${nb_p/1000:.0f}k vs $45k: {'PASS' if a['nb_qual'] else 'FAIL'}", False, GREEN if a['nb_qual'] else RED),

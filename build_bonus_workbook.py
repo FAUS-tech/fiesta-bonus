@@ -126,7 +126,9 @@ def pct_above_1200(count, prem):
 
 
 # Retention bonus parameters
-RETENTION_POOL = 300       # monthly $ pool for retention bonus
+RETENTION_POOL_RATE = 0.005  # 0.5% of REN written premium per month
+                              # Pool scales with the agent's renewable book size.
+                              # An agent with $50k REN earns more than one with $25k REN.
 RETENTION_RATE_DEFAULT = 0.75  # placeholder retention rate (actual computed from agency history)
 
 
@@ -207,9 +209,10 @@ def calc_proposal_a(nb, rwr, ren, retention_rate=RETENTION_RATE_DEFAULT):
          100% PIF: +$8 per policy
 
     3. Book retention BONUS (paid monthly, separate from per-policy):
-         retention_rate x $300
-         retention_rate = % of NB premium written 6 months ago that is still active today.
-         For modeling here we assume 75% (industry typical); actual computed from agency history.
+         REN written premium this month x 0.5% (or $5 per $1,000 retained)
+         Scales with the agent's RENEWABLE BOOK SIZE.
+         Agent with $50k REN gets $250 retention bonus.
+         Agent with $25k REN gets $125. Same retention rate, different book = different bonus.
 
     4. Monthly MINIMUMS:
          NB premium >= $35,000/mo -> unlocks NB base + NB collected
@@ -260,8 +263,11 @@ def calc_proposal_a(nb, rwr, ren, retention_rate=RETENTION_RATE_DEFAULT):
     ren_col_pay = ren_c * ren_above * ren_inc
     ren_target = ren_base_pay + ren_col_pay
 
-    # Book retention bonus (separate, paid regardless of monthly gates)
-    retention_bonus = retention_rate * RETENTION_POOL
+    # Book retention bonus (separate, paid regardless of monthly gates).
+    # Scales with the agent's renewable book size (REN premium they retained this month).
+    # An agent with a $50k renewal book earns more bonus than one with a $25k book at the
+    # same retention rate.
+    retention_bonus = ren_p * RETENTION_POOL_RATE
 
     total_target = nb_target + ren_target + rwr_target + retention_bonus
 
@@ -851,10 +857,11 @@ def build_proposal_a(wb):
         if h: style_header(ws.cell(row=r, column=i, value=h))
     r += 1
     ret_rows = [
-        ('Retention Rate', '% retained', '(NB premium written 6 months ago that is STILL ACTIVE today) / (NB premium written 6 months ago)'),
-        ('Monthly Pool', f'${RETENTION_POOL}', 'Pool of bonus dollars at stake for retention.'),
-        ('Retention Bonus', 'Rate x Pool', f'e.g., 75% x ${RETENTION_POOL} = ${RETENTION_POOL*0.75:.0f}/mo. 90% x ${RETENTION_POOL} = ${RETENTION_POOL*0.9:.0f}/mo. 100% x ${RETENTION_POOL} = ${RETENTION_POOL}/mo.'),
-        ('Modeling assumption', '75% retention rate', f'For modeling in this workbook we use 75% (industry typical) = ${RETENTION_POOL*0.75:.0f}/mo. Actual is computed monthly from the agency\'s history.'),
+        ('Formula', 'REN written premium x 0.5%', 'Bonus = $5 per $1,000 of REN premium the agent retained this month.'),
+        ('Scales with book size', f'A $50k REN month -> $250 bonus. A $25k REN month -> $125 bonus.', 'Bigger book = bigger bonus. Agent with 40 renewals at $50k earns more than agent with 20 renewals at $25k, even at the same retention rate.'),
+        ('Why per-dollar', 'Rewards both the renewal RATE and the BOOK SIZE', 'Agent who retains $50k of book contributes more commission to the agency. Bonus reflects that.'),
+        ('Retention Rate threshold', '>= 30% to qualify', 'Agent must retain at least 30% of their book to earn the retention bonus AND the per-policy REN bonus.'),
+        ('Minimum gate', 'NOT gated by NB minimum', 'Retention bonus pays regardless of monthly NB volume - it rewards keeping the book intact over time.'),
     ]
     for row in ret_rows:
         for i, v in enumerate(row, 1):
@@ -911,7 +918,7 @@ def build_proposal_a(wb):
         ('REN collected incentive', f'~{a["ren_above_1200"]*100:.0f}% >$1,200, collected {a["ren_col_pct"]*100:.0f}% -> +${a["ren_inc_per_policy"]}/policy', f'${a["ren_col_pay"]:.0f}'),
         ('RWR base (tier)', f'{d["RWR"][0]} policies in tier "{a["rwr_tier_label"]}" x ${a["rwr_per"]}', f'${a["rwr_base_pay"]:.0f}'),
         ('RWR collected incentive', f'~{a["rwr_above_1200"]*100:.0f}% >$1,200, collected {a["rwr_col_pct"]*100:.0f}% -> +${a["rwr_inc_per_policy"]}/policy', f'${a["rwr_col_pay"]:.0f}'),
-        ('Retention bonus', f'75% retention x ${RETENTION_POOL} pool', f'${a["retention_bonus"]:.0f}'),
+        ('Retention bonus', f'REN ${d["REN"][1]:,.0f} x 0.5% = ${a["retention_bonus"]:.2f}', f'${a["retention_bonus"]:.0f}'),
         ('Subtotal target', '(everything before gates)', f'${a["total_target"]:.0f}'),
         (f'NB gate (${NB_MIN_PREMIUM:,})', f'NB written ${d["NB"][1]:,.0f} vs ${NB_MIN_PREMIUM:,}', 'PASS' if a['nb_qual'] else 'FAIL'),
         (f'REN gate (>= {REN_MIN_RETENTION*100:.0f}% retention)', f'Assumed retention 75% vs {REN_MIN_RETENTION*100:.0f}%', 'PASS' if a['ren_qual'] else 'FAIL'),
