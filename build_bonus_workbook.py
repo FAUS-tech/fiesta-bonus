@@ -597,7 +597,7 @@ def build_readme(wb):
         ('  3. NB Bonus Examples', 'Who hits which NB tier under each scenario. Sorted by premium with a progress bar.'),
         ('  4. RWR Bonus Examples', 'Same view for the RWR ladder.'),
         ('  5. REN Bonus Examples', 'Same view for the REN ladder.'),
-        ('  6. Agent Examples - 100% Flip', 'Per-agent month-by-month under the strongest behavior shift.'),
+        ('  6. Combined Bonus Examples', 'NB + RWR + REN side-by-side with the TOTAL BONUS per agent-month.'),
         ('  7. Chargeback Process', 'Step-by-step 90-day reversal procedure.'),
         ('  8. Manual Tracker Template', 'Monthly template for verified bonus tracking.'),
         ('  9. Source Data', 'Raw NB/RWR/REN volumes from Jan-Apr 2026.'),
@@ -1767,6 +1767,137 @@ def build_bonus_examples(wb):
         ws.freeze_panes = 'A4'
 
 
+def _build_one_combined_table(ws, r, scenario_label, scenario_fn):
+    """One scenario block showing NB + RWR + REN bonus together per agent-month
+    plus the TOTAL BONUS for the row. Sorted by total bonus descending."""
+
+    ws.cell(row=r, column=1, value=scenario_label).font = SECTION_FONT
+    ws.cell(row=r, column=1).fill = SECTION_FILL
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=10)
+    ws.row_dimensions[r].height = 22
+    r += 1
+
+    headers = ['Agent', 'Month',
+               'NB Premium', 'NB Bonus',
+               'RWR Premium', 'RWR Bonus',
+               'REN Premium', 'REN Bonus',
+               'Progress Bar', 'TOTAL BONUS']
+    for i, h in enumerate(headers, 1):
+        style_header(ws.cell(row=r, column=i, value=h))
+    ws.row_dimensions[r].height = 26
+    r += 1
+
+    rows_data = []
+    for agent in AGENT_NAMES:
+        for month in MONTHS:
+            d = scenario_fn(AGENTS[agent][month])
+            nb_p = d['NB'][1]
+            rwr_p = d['RWR'][1]
+            ren_p = d['REN'][1]
+            nb_b, _, _ = nb_tier_bonus(nb_p)
+            rwr_b, _, _ = rwr_tier_bonus(rwr_p)
+            ren_b, _, _ = ren_tier_bonus(ren_p)
+            # Apply the same gates the plan uses
+            nb_qual = nb_p >= NB_MIN_PREMIUM
+            rwr_qual = nb_qual  # RWR follows NB
+            ren_qual = True     # assume retention >= 30% (model default)
+            nb_paid = nb_b if nb_qual else 0
+            rwr_paid = rwr_b if rwr_qual else 0
+            ren_paid = ren_b if ren_qual else 0
+            total = nb_paid + rwr_paid + ren_paid
+            rows_data.append((agent, month, nb_p, nb_paid, rwr_p, rwr_paid,
+                              ren_p, ren_paid, total))
+
+    rows_data.sort(key=lambda x: -x[8])  # sort by total bonus desc
+
+    data_start_row = r
+    for (agent, month, nb_p, nb_b, rwr_p, rwr_b, ren_p, ren_b, total) in rows_data:
+        ws.cell(row=r, column=1, value=agent).font = Font(bold=True)
+        ws.cell(row=r, column=2, value=month)
+        for col, val in [(3, nb_p), (4, nb_b), (5, rwr_p), (6, rwr_b),
+                         (7, ren_p), (8, ren_b)]:
+            c = ws.cell(row=r, column=col, value=val)
+            style_dollar(c)
+            # Highlight bonus cells that paid
+            if col in (4, 6, 8) and val > 0:
+                c.fill = PatternFill('solid', fgColor='E2EFDA')  # light green
+                c.font = Font(bold=True, color='006100')
+            elif col in (4, 6, 8) and val == 0:
+                c.font = Font(color='9C0006')  # red text for $0
+
+        style_data(ws.cell(row=r, column=1))
+        ws.cell(row=r, column=1).font = Font(bold=True)
+        style_data(ws.cell(row=r, column=2))
+
+        c_prog = ws.cell(row=r, column=9, value=total)
+        style_dollar(c_prog)
+        c_prog.font = Font(color='FFFFFF', size=9)
+
+        c_total = ws.cell(row=r, column=10, value=total)
+        style_dollar(c_total)
+        if total > 0:
+            c_total.fill = TIER_FILL_T5
+            c_total.font = Font(bold=True, size=13, color='FFFFFF')
+        else:
+            c_total.fill = TIER_FILL_NIL
+            c_total.font = Font(bold=True, size=13, color='FFFFFF')
+        c_total.alignment = Alignment(horizontal='center', vertical='center')
+
+        ws.row_dimensions[r].height = 22
+        r += 1
+
+    # Total row for the scenario
+    total_total = sum(x[8] for x in rows_data)
+    ws.cell(row=r, column=1, value='4-MONTH TOTAL (all 6 agents)').font = Font(bold=True, size=11)
+    ws.cell(row=r, column=1).fill = SUB_FILL
+    for col in range(2, 10):
+        ws.cell(row=r, column=col).fill = SUB_FILL
+    c = ws.cell(row=r, column=10, value=total_total)
+    style_dollar(c)
+    c.font = Font(bold=True, size=13, color='FFFFFF')
+    c.fill = PatternFill('solid', fgColor='1F4E78')
+    c.alignment = Alignment(horizontal='center', vertical='center')
+    ws.row_dimensions[r].height = 26
+    r += 1
+
+    # Data bar on the Progress column - scale to max possible (~$2,300/mo)
+    progress_range = f'I{data_start_row}:I{r-2}'
+    bar_rule = DataBarRule(start_type='num', start_value=0,
+                           end_type='num', end_value=2500,
+                           color='63BE7B', showValue=False)
+    ws.conditional_formatting.add(progress_range, bar_rule)
+
+    r += 1
+    return r
+
+
+def build_combined_examples(wb):
+    """Combined NB + RWR + REN bonus per agent-month with the TOTAL BONUS
+    column. Three scenarios stacked."""
+    ws = wb.create_sheet('Combined Bonus Examples')
+    ws['A1'] = "COMBINED BONUS EXAMPLES - NB + RWR + REN per agent-month, three scenarios"
+    ws['A1'].font = TITLE_FONT
+    ws.merge_cells('A1:J1')
+    ws['A2'] = ("Each row = one agent-month. Shows the NB, RWR, and REN bonus side by side and the TOTAL "
+                "BONUS for the month. Sorted by total bonus descending. Bonus cells that paid are shaded green; "
+                "red total = nothing paid (NB minimum not met).")
+    ws['A2'].font = Font(italic=True, size=10, color='666666')
+    ws.merge_cells('A2:J2')
+
+    scenarios = [
+        ('SCENARIO 1: REAL DATA (Jan-Apr 2026)',          lambda d: d),
+        ('SCENARIO 2: 50% SWAP (half of RWR -> REN)',     lambda d: swap_rwr_to_ren(d, 0.5)),
+        ('SCENARIO 3: 100% FLIP (RWR fully -> REN)',      full_flip),
+    ]
+    r = 4
+    for scenario_label, scenario_fn in scenarios:
+        r = _build_one_combined_table(ws, r, scenario_label, scenario_fn)
+
+    # Cols: Agent | Month | NB$ | NB Bonus | RWR$ | RWR Bonus | REN$ | REN Bonus | Progress | Total
+    set_col_widths(ws, [22, 11, 13, 12, 13, 12, 13, 12, 20, 16])
+    ws.freeze_panes = 'A4'
+
+
 def build_source_data(wb):
     """Raw NB/RWR/REN source data for all 6 agents x 4 months. The data behind every calculation."""
     ws = wb.create_sheet('Source Data')
@@ -2650,7 +2781,7 @@ def build():
     build_executive_summary(wb)
     build_proposal_a(wb)                  # The Bonus Plan rules
     build_bonus_examples(wb)              # 3 sheets: NB / RWR / REN examples
-    build_agent_examples_flip(wb)         # Per-agent under 100% FLIP (cleanest view)
+    build_combined_examples(wb)           # 1 sheet: NB + RWR + REN together + Total Bonus
     build_chargeback(wb)
     build_manual_tracker(wb)
     build_source_data(wb)

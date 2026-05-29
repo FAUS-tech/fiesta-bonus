@@ -14,6 +14,7 @@ from build_bonus_workbook import (
     AGENTS, MONTHS, AGENT_NAMES, NB_MIN_PREMIUM, REN_MIN_RETENTION,
     BLENDED_COMM, ROYALTY, OVERHEAD, CAP_STANDARD, AGENT_SALARY, RETENTION_POOL_RATE,
     calc_proposal_a, current_bonus, swap_rwr_to_ren, full_flip,
+    nb_tier_bonus, rwr_tier_bonus, ren_tier_bonus,
 )
 
 # COLOR PALETTE
@@ -793,6 +794,117 @@ def slide_agent_detail(prs, idx, total, agent, per_agent):
              font_size=11, bold=True, italic=True, color=NAVY, align=PP_ALIGN.CENTER)
 
 
+def _tier_text(tier_num, tier_label, amount):
+    if tier_num == 0:
+        return "Below T1 (min not met)"
+    return f"T{tier_num} {tier_label} -> ${amount:,.0f}"
+
+
+def _scenario_premium_rows(scenario_fn, line_type, tier_fn):
+    """Return up to 12 top agent-month rows for a given scenario+line, sorted by premium desc.
+    Each row = [Agent, Month, Premium, Tier (text), Bonus]."""
+    rows = []
+    for agent in AGENT_NAMES:
+        for month in MONTHS:
+            d = scenario_fn(AGENTS[agent][month])
+            prem = d[line_type][1]
+            bonus, tier_num, tier_label = tier_fn(prem)
+            rows.append((agent, month, prem, tier_num, tier_label, bonus))
+    rows.sort(key=lambda x: -x[2])
+    return rows[:12]
+
+
+def slide_examples_single_line(prs, idx, total, line_type, tier_fn, ladder_text):
+    """One slide showing the new tier hits for a single bonus line (NB / RWR / REN)
+    under all 3 scenarios side by side. Top 12 rows per scenario."""
+    s = add_slide(prs)
+    header_strip(s, f"{line_type} Bonus Examples - Who Hits Which Tier",
+                 ladder_text)
+    footer(s, idx, total)
+
+    scenarios = [
+        ('REAL (today)', lambda d: d, LIGHT_GRAY, NAVY),
+        ('50% SWAP', lambda d: swap_rwr_to_ren(d, 0.5), LIGHT_BLUE, ACCENT_BLUE),
+        ('100% FLIP', full_flip, LIGHT_GOLD, GOLD),
+    ]
+
+    x_positions = [Inches(0.3), Inches(4.62), Inches(8.94)]
+    for (sc_name, sc_fn, fill, hdr), x in zip(scenarios, x_positions):
+        rows_data = _scenario_premium_rows(sc_fn, line_type, tier_fn)
+
+        # Scenario header bar
+        add_bar(s, x, Inches(1.1), Inches(4.05), Inches(0.4), hdr)
+        add_text(s, x, Inches(1.1), Inches(4.05), Inches(0.4),
+                 sc_name, font_size=14, bold=True, color=WHITE,
+                 align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+
+        # Table
+        table_rows = [['Agent', f'{line_type} Premium', 'Tier / Bonus']]
+        for agent, month, prem, tier_num, tier_label, bonus in rows_data:
+            first = agent.split()[0]
+            tier_str = _tier_text(tier_num, tier_label, bonus)
+            table_rows.append([f"{first} {month[:3]}", f"${prem/1000:,.0f}k", tier_str])
+
+        add_table(s, x, Inches(1.55), Inches(4.05), Inches(5.7), table_rows,
+                  header_fill=hdr,
+                  col_widths=[Inches(1.3), Inches(0.95), Inches(1.8)],
+                  font_size=9, row_height_in=0.30, first_col_bold=True)
+
+
+def slide_examples_combined(prs, idx, total):
+    """Combined NB + RWR + REN with Total Bonus per row, three scenarios."""
+    s = add_slide(prs)
+    header_strip(s, "Combined Bonus Examples - All Three Lines + Total Bonus",
+                 "Per agent-month: NB tier + RWR tier + REN tier = TOTAL BONUS. Top 8 by total bonus per scenario.")
+    footer(s, idx, total)
+
+    scenarios = [
+        ('REAL (today)', lambda d: d, NAVY),
+        ('50% SWAP', lambda d: swap_rwr_to_ren(d, 0.5), ACCENT_BLUE),
+        ('100% FLIP', full_flip, GOLD),
+    ]
+
+    x_positions = [Inches(0.3), Inches(4.62), Inches(8.94)]
+    for (sc_name, sc_fn, hdr), x in zip(scenarios, x_positions):
+        rows_data = []
+        for agent in AGENT_NAMES:
+            for month in MONTHS:
+                d = sc_fn(AGENTS[agent][month])
+                nb_b, _, _ = nb_tier_bonus(d['NB'][1])
+                rwr_b, _, _ = rwr_tier_bonus(d['RWR'][1])
+                ren_b, _, _ = ren_tier_bonus(d['REN'][1])
+                nb_qual = d['NB'][1] >= NB_MIN_PREMIUM
+                nb_paid = nb_b if nb_qual else 0
+                rwr_paid = rwr_b if nb_qual else 0
+                ren_paid = ren_b
+                total_b = nb_paid + rwr_paid + ren_paid
+                rows_data.append((agent, month, nb_paid, rwr_paid, ren_paid, total_b))
+        rows_data.sort(key=lambda x: -x[5])
+        rows_data = rows_data[:10]
+        total_4mo = sum(x[5] for x in rows_data)
+
+        add_bar(s, x, Inches(1.1), Inches(4.05), Inches(0.4), hdr)
+        add_text(s, x, Inches(1.1), Inches(4.05), Inches(0.4),
+                 sc_name, font_size=14, bold=True, color=WHITE,
+                 align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+
+        table_rows = [['Agent / Mo', 'NB', 'RWR', 'REN', 'TOTAL']]
+        for agent, month, nb_b, rwr_b, ren_b, total_b in rows_data:
+            first = agent.split()[0]
+            table_rows.append([f"{first} {month[:3]}",
+                               f"${nb_b:,.0f}" if nb_b else "-",
+                               f"${rwr_b:,.0f}" if rwr_b else "-",
+                               f"${ren_b:,.0f}" if ren_b else "-",
+                               f"${total_b:,.0f}"])
+        table_rows.append(['Top-10 total (this scenario)', '', '', '',
+                           f"${total_4mo:,.0f}"])
+
+        add_table(s, x, Inches(1.55), Inches(4.05), Inches(5.5), table_rows,
+                  header_fill=hdr,
+                  col_widths=[Inches(1.3), Inches(0.65), Inches(0.65), Inches(0.65), Inches(0.8)],
+                  font_size=9, row_height_in=0.28, first_col_bold=True)
+
+
 def slide_swap_comparison(prs, idx, total, real, swap, flip):
     s = add_slide(prs)
     header_strip(s, "Headline - 4-Month Totals Across 3 Scenarios (6 agents)",
@@ -952,7 +1064,12 @@ def build():
 
     real, swap, flip, per_agent = compute_totals()
 
-    # Simplified deck - only the slides that matter for the boss decision.
+    # Simplified deck. Per-agent slides dropped in favor of tier-examples slides
+    # that mirror the Excel "Bonus Examples" sheets.
+    nb_ladder = "T1 $45k=$250 | T2 $55k=$375 | T3 $70k=$525 | T4 $85k=$725 | T5 $100k=$1,000 | Above $100k: +$50 per $5k. Min req $45k."
+    rwr_ladder = "T1 $45k=$100 | T2 $55k=$200 | T3 $70k=$275 | T4 $85k=$350 | T5 $100k=$500 | Above $100k: +$25 per $5k. Gated by NB min."
+    ren_ladder = "T1 $25k=$250 | T2 $40k=$350 | T3 $65k=$450 | T4 $80k=$550 | T5 $100k=$800 | Above $100k: +$40 per $5k. Min 30% retention rate."
+
     builders = [
         lambda t: slide_cover(prs),
         lambda t: slide_problem(prs, 2, t),
@@ -960,17 +1077,14 @@ def build():
         lambda t: slide_minimums(prs, 4, t),
         lambda t: slide_why_current_drops(prs, 5, t),
         lambda t: slide_calc_walkthrough(prs, 6, t),
-    ]
-    # Per-agent slides (6)
-    for i, agent in enumerate(AGENT_NAMES):
-        idx = 7 + i
-        builders.append(lambda t, a=agent, ix=idx: slide_agent_detail(prs, ix, t, a, per_agent))
-    # Final headline + recommendation
-    builders.extend([
-        lambda t: slide_swap_comparison(prs, 13, t, real, swap, flip),
-        lambda t: slide_recommendation(prs, 14, t),
+        lambda t: slide_examples_single_line(prs, 7, t, 'NB',  nb_tier_bonus,  nb_ladder),
+        lambda t: slide_examples_single_line(prs, 8, t, 'RWR', rwr_tier_bonus, rwr_ladder),
+        lambda t: slide_examples_single_line(prs, 9, t, 'REN', ren_tier_bonus, ren_ladder),
+        lambda t: slide_examples_combined(prs, 10, t),
+        lambda t: slide_swap_comparison(prs, 11, t, real, swap, flip),
+        lambda t: slide_recommendation(prs, 12, t),
         lambda t: slide_closing(prs),
-    ])
+    ]
     total = len(builders)
     for fn in builders:
         fn(total)
