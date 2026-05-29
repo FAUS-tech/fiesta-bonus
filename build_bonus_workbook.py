@@ -17,7 +17,7 @@ Two scenarios for each proposal:
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
-from openpyxl.formatting.rule import CellIsRule
+from openpyxl.formatting.rule import CellIsRule, DataBarRule
 from copy import copy
 
 # ============================================================================
@@ -594,10 +594,13 @@ def build_readme(wb):
         ('===== SHEET MAP =====', ''),
         ('  1. Executive Summary', 'Bottom-line numbers and per-agent rows.'),
         ('  2. The Bonus Plan', 'Full plan rules: tier ladders, minimums, chargeback, worked example.'),
-        ('  3. Agent Examples - 100% Flip', 'Per-agent month-by-month under the strongest behavior shift.'),
-        ('  4. Chargeback Process', 'Step-by-step 90-day reversal procedure.'),
-        ('  5. Manual Tracker Template', 'Monthly template for verified bonus tracking.'),
-        ('  6. Source Data', 'Raw NB/RWR/REN volumes from Jan-Apr 2026.'),
+        ('  3. NB Bonus Examples', 'Who hits which NB tier under each scenario. Sorted by premium with a progress bar.'),
+        ('  4. RWR Bonus Examples', 'Same view for the RWR ladder.'),
+        ('  5. REN Bonus Examples', 'Same view for the REN ladder.'),
+        ('  6. Agent Examples - 100% Flip', 'Per-agent month-by-month under the strongest behavior shift.'),
+        ('  7. Chargeback Process', 'Step-by-step 90-day reversal procedure.'),
+        ('  8. Manual Tracker Template', 'Monthly template for verified bonus tracking.'),
+        ('  9. Source Data', 'Raw NB/RWR/REN volumes from Jan-Apr 2026.'),
     ]
     for r, (a, b) in enumerate(rows, 2):
         ws.cell(row=r, column=1, value=a)
@@ -1621,6 +1624,149 @@ def build_agent_examples_flip(wb):
     set_col_widths(ws, [10, 12, 12, 11, 12, 12, 11, 12, 12, 11, 12, 13, 9, 11])
 
 
+# ============================================================================
+# BONUS EXAMPLES TABLES (one sheet per type: NB, RWR, REN)
+# Each sheet shows REAL, SWAP, FLIP scenarios stacked. Rows = 6 agents x
+# 4 months, sorted by premium descending. Includes a data-bar progress
+# column and color-coded tier hits.
+# ============================================================================
+
+TIER_FILL_T5  = PatternFill('solid', fgColor='00B050')  # bright green
+TIER_FILL_T4  = PatternFill('solid', fgColor='92D050')  # light green
+TIER_FILL_T3  = PatternFill('solid', fgColor='FFFF00')  # yellow
+TIER_FILL_T2  = PatternFill('solid', fgColor='FFC000')  # orange
+TIER_FILL_T1  = PatternFill('solid', fgColor='F4B084')  # peach
+TIER_FILL_NIL = PatternFill('solid', fgColor='C00000')  # red (below min)
+TIER_FILL_OK  = PatternFill('solid', fgColor='00B050')  # green for met
+
+
+def _tier_fill_and_label(tier_num, tier_label, tier_amount, line_type):
+    """Return the cell fill and a descriptive label for the tier column."""
+    if tier_num == 0:
+        if line_type == 'REN':
+            return TIER_FILL_NIL, 'Below T1 (need $25k REN premium)'
+        return TIER_FILL_NIL, 'Below T1 - Minimum Requirement NOT met'
+    color_map = {1: TIER_FILL_T1, 2: TIER_FILL_T2, 3: TIER_FILL_T3,
+                 4: TIER_FILL_T4, 5: TIER_FILL_T5}
+    fill = color_map.get(min(tier_num, 5), TIER_FILL_T5)
+    return fill, f"Tier {tier_num} ({tier_label}) - ${tier_amount:,.0f}"
+
+
+def _build_one_examples_table(ws, r, scenario_label, scenario_fn, line_type,
+                              tier_bonus_fn, line_min_text):
+    """Build one scenario table inside a Bonus Examples sheet.
+
+    line_type: 'NB' | 'RWR' | 'REN'
+    scenario_fn: callable that takes the original agent-month dict and
+                 returns a possibly-modified one (for SWAP / FLIP).
+    """
+    ws.cell(row=r, column=1, value=scenario_label).font = SECTION_FONT
+    ws.cell(row=r, column=1).fill = SECTION_FILL
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=6)
+    ws.row_dimensions[r].height = 22
+    r += 1
+
+    headers = ['Agent', 'Month', f'{line_type} Premium', 'Progress Bar',
+               'Tier', 'Total Bonus $']
+    for i, h in enumerate(headers, 1):
+        style_header(ws.cell(row=r, column=i, value=h))
+    ws.row_dimensions[r].height = 26
+    r += 1
+
+    rows = []
+    for agent in AGENT_NAMES:
+        for month in MONTHS:
+            d = scenario_fn(AGENTS[agent][month])
+            premium = d[line_type][1]
+            bonus_amt, tier_num, tier_label = tier_bonus_fn(premium)
+            rows.append((agent, month, premium, bonus_amt, tier_num, tier_label))
+
+    # Sort by premium descending so top earners surface first (matches the
+    # screenshot from the boss).
+    rows.sort(key=lambda x: -x[2])
+
+    data_start_row = r
+    for agent, month, premium, bonus_amt, tier_num, tier_label in rows:
+        ws.cell(row=r, column=1, value=agent)
+        ws.cell(row=r, column=2, value=month)
+        c_prem = ws.cell(row=r, column=3, value=premium)
+        c_prog = ws.cell(row=r, column=4, value=premium)  # value drives the data bar
+        c_tier = ws.cell(row=r, column=5)
+        c_bonus = ws.cell(row=r, column=6, value=bonus_amt)
+
+        tier_fill, tier_text = _tier_fill_and_label(tier_num, tier_label, bonus_amt, line_type)
+        c_tier.value = tier_text
+        c_tier.fill = tier_fill
+        c_tier.font = Font(bold=True, size=11, color='FFFFFF' if tier_num == 0 else '000000')
+        c_tier.alignment = Alignment(horizontal='center', vertical='center')
+
+        style_data(ws.cell(row=r, column=1))
+        ws.cell(row=r, column=1).font = Font(bold=True)
+        style_data(ws.cell(row=r, column=2))
+        style_dollar(c_prem)
+        style_dollar(c_prog)
+        c_prog.font = Font(color='FFFFFF', size=9)  # hide the duplicated number
+        style_dollar(c_bonus)
+        c_bonus.font = Font(bold=True, size=12, color='006100' if bonus_amt > 0 else '9C0006')
+
+        ws.row_dimensions[r].height = 22
+        r += 1
+
+    # Data bar on the Progress column - max value = $120k so we can see >$100k.
+    progress_range = f'D{data_start_row}:D{r-1}'
+    bar_rule = DataBarRule(start_type='num', start_value=0,
+                           end_type='num', end_value=120000,
+                           color='63BE7B', showValue=False)
+    ws.conditional_formatting.add(progress_range, bar_rule)
+
+    # Footer note: tier ladder reminder.
+    ws.cell(row=r, column=1, value=line_min_text).font = Font(italic=True, size=10, color='666666')
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=6)
+    ws.row_dimensions[r].height = 20
+    r += 2
+    return r
+
+
+def build_bonus_examples(wb):
+    """One sheet per bonus line (NB / RWR / REN). Each has 3 scenarios
+    stacked: REAL, 50% SWAP, 100% FLIP. Within each scenario rows are
+    sorted by premium descending (top earners on top), with a data-bar
+    progress column and color-coded tier hits."""
+
+    configs = [
+        ('NB Bonus Examples', 'NB', nb_tier_bonus,
+         'NB tiers: T1 $45k=$250 | T2 $55k=$375 | T3 $70k=$525 | T4 $85k=$725 | T5 $100k=$1,000 | Above $100k: +$50 per $5k. Minimum requirement = $45k NB premium.'),
+        ('RWR Bonus Examples', 'RWR', rwr_tier_bonus,
+         'RWR tiers: T1 $45k=$100 | T2 $55k=$200 | T3 $70k=$275 | T4 $85k=$350 | T5 $100k=$500 | Above $100k: +$25 per $5k. RWR gated by NB minimum.'),
+        ('REN Bonus Examples', 'REN', ren_tier_bonus,
+         'REN tiers: T1 $25k=$250 | T2 $40k=$350 | T3 $65k=$450 | T4 $80k=$550 | T5 $100k=$800 | Above $100k: +$40 per $5k. REN gated by 30% retention rate.'),
+    ]
+    scenarios = [
+        ('SCENARIO 1: REAL DATA (Jan-Apr 2026)',          lambda d: d),
+        ('SCENARIO 2: 50% SWAP (half of RWR -> REN)',     lambda d: swap_rwr_to_ren(d, 0.5)),
+        ('SCENARIO 3: 100% FLIP (RWR fully -> REN)',      full_flip),
+    ]
+
+    for sheet_name, line_type, tier_fn, ladder_text in configs:
+        ws = wb.create_sheet(sheet_name)
+        ws['A1'] = f"{line_type} BONUS EXAMPLES - 6 agents x 4 months, three scenarios"
+        ws['A1'].font = TITLE_FONT
+        ws.merge_cells('A1:F1')
+        ws['A2'] = (f"Each row = one agent-month under {line_type}. Sorted by {line_type} premium descending. "
+                    f"Progress bar = {line_type} premium / $120k. Tier shows the bonus formula.")
+        ws['A2'].font = Font(italic=True, size=10, color='666666')
+        ws.merge_cells('A2:F2')
+
+        r = 4
+        for scenario_label, scenario_fn in scenarios:
+            r = _build_one_examples_table(ws, r, scenario_label, scenario_fn,
+                                          line_type, tier_fn, ladder_text)
+
+        # Column widths: Agent | Month | Premium | Progress | Tier | Bonus
+        set_col_widths(ws, [24, 12, 14, 24, 42, 14])
+        ws.freeze_panes = 'A4'
+
+
 def build_source_data(wb):
     """Raw NB/RWR/REN source data for all 6 agents x 4 months. The data behind every calculation."""
     ws = wb.create_sheet('Source Data')
@@ -2503,6 +2649,7 @@ def build():
     build_readme(wb)
     build_executive_summary(wb)
     build_proposal_a(wb)                  # The Bonus Plan rules
+    build_bonus_examples(wb)              # 3 sheets: NB / RWR / REN examples
     build_agent_examples_flip(wb)         # Per-agent under 100% FLIP (cleanest view)
     build_chargeback(wb)
     build_manual_tracker(wb)
