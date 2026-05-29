@@ -324,71 +324,68 @@ def slide_two_plans_at_a_glance(prs, idx, total):
 
 
 def slide_plan_a_details_new(prs, idx, total):
-    """The Bonus Plan: NB and RWR by premium tier + collected kicker, plus retention bonus for renewals."""
+    """The Bonus Plan: monthly premium-tier ladders for NB, RWR, REN."""
     s = add_slide(prs)
-    header_strip(s, "THE BONUS PLAN (boss-approved framework)",
-                 "No tiers. Flat per-policy base. Per-policy collected incentive on policies >$1,200. Plus a book retention bonus.")
+    header_strip(s, "THE BONUS PLAN",
+                 "Same idea as today's 30/38/50 count tiers, but driven by monthly WRITTEN PREMIUM. $1,000 NB at $100k.")
     footer(s, idx, total)
 
-    # Section 1: Per-policy base - TIERED (NB and RWR only - REN is via retention bonus)
-    base_data = [
-        ["Premium tier", "NB", "RWR"],
-        ["Under $1,200", "$5", "$2"],
-        ["$1,200 - $1,799", "$7", "$3"],
-        ["$1,800 - $2,499", "$10", "$4"],
-        ["$2,500 - $2,999", "$13", "$4"],
-        ["$3,000+", "$13+$2/$1k (max $25)", "$4"],
-        ["REN (renewals)", "see Section 3", "see Section 3"],
+    # NB tier ladder
+    nb_data = [
+        ["Tier", "Monthly NB premium", "NB pays"],
+        ["T1 (min req)", "$45,000", "$250"],
+        ["T2", "$55,000", "$375"],
+        ["T3", "$70,000", "$525"],
+        ["T4", "$85,000", "$725"],
+        ["T5", "$100,000", "$1,000"],
+        ["Above $100k", "+$5k of premium", "+$50 (1%)"],
     ]
     add_text(s, Inches(0.4), Inches(1.05), Inches(6.2), Inches(0.3),
-             "1. PER-POLICY BASE for NB and RWR (TIERED by written premium)", font_size=13, bold=True, color=NAVY)
-    add_table(s, Inches(0.4), Inches(1.4), Inches(6.2), Inches(2.5), base_data,
-              header_fill=GREEN, col_widths=[Inches(2.5), Inches(2.2), Inches(1.5)],
+             "1. NEW BUSINESS - 5 tiers by monthly written premium", font_size=13, bold=True, color=NAVY)
+    add_table(s, Inches(0.4), Inches(1.4), Inches(6.2), Inches(2.5), nb_data,
+              header_fill=GREEN, col_widths=[Inches(1.6), Inches(2.4), Inches(2.2)],
               font_size=11, row_height_in=0.32)
 
-    # Section 2: Collected incentive
-    inc_data = [
-        ["Collected % of premium", "Extra per policy"],
-        ["Below 15%", "$0 (no incentive)"],
-        ["15% to 19%", "+$1"],
-        ["20% to 24%", "+$2"],
-        ["25% to 99%", "+$5"],
-        ["100% PIF", "+$8"],
+    # RWR tier ladder (half of NB)
+    rwr_data = [
+        ["Tier", "Monthly RWR premium", "RWR pays (half of NB)"],
+        ["T1", "$45,000", "$125"],
+        ["T2", "$55,000", "$187.50"],
+        ["T3", "$70,000", "$262.50"],
+        ["T4", "$85,000", "$362.50"],
+        ["T5", "$100,000", "$500"],
+        ["Above $100k", "+$5k of premium", "+$25 (0.5%)"],
     ]
     add_text(s, Inches(6.85), Inches(1.05), Inches(6.2), Inches(0.3),
-             "2. COLLECTED INCENTIVE (only on policies > $1,200)", font_size=13, bold=True, color=NAVY)
-    add_table(s, Inches(6.85), Inches(1.4), Inches(6.2), Inches(1.9), inc_data,
-              header_fill=ACCENT_BLUE, col_widths=[Inches(3.5), Inches(2.7)],
-              font_size=11, row_height_in=0.35)
+             "2. REWRITES - same breakpoints, pays HALF (gated by NB $45k)", font_size=13, bold=True, color=NAVY)
+    add_table(s, Inches(6.85), Inches(1.4), Inches(6.2), Inches(2.5), rwr_data,
+              header_fill=ACCENT_BLUE, col_widths=[Inches(1.4), Inches(2.4), Inches(2.4)],
+              font_size=11, row_height_in=0.32)
 
-    # Section 3: Retention bonus
-    add_text(s, Inches(0.4), Inches(3.1), Inches(12.7), Inches(0.3),
-             "3. RENEWALS = RETENTION BONUS ONLY (NO per-policy REN pay - avoids double-paying)", font_size=13, bold=True, color=NAVY)
-    ret_data = [
-        ["What it is", "Formula", "Example values"],
-        ["Renewals are paid as ONE bonus scaling with the premium retained. No per-policy REN base or collected incentive.",
-         "REN written premium x 0.5%",
-         "$50k REN -> $250/mo | $25k REN -> $125/mo | $10k REN -> $50/mo. Bigger book + bigger premium = bigger bonus."],
+    # REN tier ladder (own breakpoints starting at $25k)
+    add_text(s, Inches(0.4), Inches(4.1), Inches(12.7), Inches(0.3),
+             "3. RENEWALS - own tiers starting at $25k, gated by 30% retention rate", font_size=13, bold=True, color=NAVY)
+    ren_data = [
+        ["Tier", "T1", "T2", "T3", "T4", "T5", "Above $100k"],
+        ["Monthly REN premium", "$25,000", "$45,000", "$65,000", "$85,000", "$100,000", "+$5k of premium"],
+        ["REN pays (0.80x of NB)", "$200", "$300", "$420", "$580", "$800", "+$40 (0.8%)"],
     ]
-    add_table(s, Inches(0.4), Inches(3.45), Inches(12.7), Inches(1.0), ret_data,
-              header_fill=GOLD, col_widths=[Inches(4.5), Inches(3.0), Inches(5.2)],
-              font_size=11, row_height_in=0.45)
+    add_table(s, Inches(0.4), Inches(4.45), Inches(12.7), Inches(1.4), ren_data,
+              header_fill=GOLD, col_widths=[Inches(2.6), Inches(1.5), Inches(1.5), Inches(1.5), Inches(1.5), Inches(1.6), Inches(2.5)],
+              font_size=11, row_height_in=0.40, first_col_bold=True)
 
     # Section 4: Rules on top
-    add_text(s, Inches(0.4), Inches(4.65), Inches(12.7), Inches(0.3),
+    add_text(s, Inches(0.4), Inches(6.05), Inches(12.7), Inches(0.3),
              "4. RULES ON TOP", font_size=13, bold=True, color=NAVY)
     rules_data = [
         ["Rule", "Value", "What it does"],
-        [f"NB monthly minimum", f"${NB_MIN_PREMIUM:,} NB premium", "If NB premium < $35k that month, NB pay = $0"],
-        [f"REN monthly minimum", f"{REN_MIN_RETENTION*100:.0f}% retention of book", f"If retention < 30%, REN pay = $0"],
-        ["RWR gate", "NB gate met (or both)", "RWR paid when NB gate met. Meeting both also works."],
+        [f"NB monthly minimum", f"${NB_MIN_PREMIUM:,} NB premium", "Equals T1 entry. NB < $45k -> NB pay = $0 (also blocks RWR)"],
+        [f"REN monthly minimum", f"{REN_MIN_RETENTION*100:.0f}% retention rate of book", f"Retain < 30% -> REN pay = $0"],
         ["Chargeback", "3 months (90 days)", "100% bonus reversed if policy cancels/rewrites within 90 days"],
-        ["Excel tracker", "Required for every policy", "Agent enters policy info + down + premium. No entry = no bonus."],
-        ["Renewal book", "Assigned per agent", "Newer agents inherit a renewal book from former employees"],
     ]
-    add_table(s, Inches(0.4), Inches(5.0), Inches(12.7), Inches(2.15), rules_data,
+    add_table(s, Inches(0.4), Inches(6.40), Inches(12.7), Inches(1.10), rules_data,
               header_fill=NAVY, col_widths=[Inches(2.8), Inches(3.4), Inches(6.5)],
-              font_size=11, row_height_in=0.30)
+              font_size=11, row_height_in=0.26)
 
 
 def slide_plan_a_details(prs, idx, total):
@@ -540,7 +537,7 @@ def slide_minimums(prs, idx, total):
     sal_items = [
         f"Agent salary basis: $16-$22/hr x 40 hr/wk = $2,773-$3,813/mo (midpoint ${AGENT_SALARY:,}).",
         f"At 25% collected (today's typical): ${NB_MIN_PREMIUM*0.25:,.0f} collected x 11% x (1-21%) = ~${NB_MIN_PREMIUM*0.25*0.11*(1-ROYALTY):,.0f} retained ({NB_MIN_PREMIUM*0.25*0.11*(1-ROYALTY)/AGENT_SALARY*100:.0f}% of salary).",
-        f"At 50% collected (kicker target): ~${NB_MIN_PREMIUM*0.50*0.11*(1-ROYALTY):,.0f} retained ({NB_MIN_PREMIUM*0.50*0.11*(1-ROYALTY)/AGENT_SALARY*100:.0f}% of salary).",
+        f"At 50% collected (typical push target): ~${NB_MIN_PREMIUM*0.50*0.11*(1-ROYALTY):,.0f} retained ({NB_MIN_PREMIUM*0.50*0.11*(1-ROYALTY)/AGENT_SALARY*100:.0f}% of salary).",
         f"At 75% collected (top performer): ~${NB_MIN_PREMIUM*0.75*0.11*(1-ROYALTY):,.0f} retained ({NB_MIN_PREMIUM*0.75*0.11*(1-ROYALTY)/AGENT_SALARY*100:.0f}% of salary) - covers salary AND generates profit.",
         "The MINIMUM is the floor. The COLLECTED KICKER is the lever to cover salary and earn bonus on top.",
     ]
@@ -656,7 +653,7 @@ def slide_why_current_drops(prs, idx, total):
     add_text(s, Inches(0.7), Inches(1.7), Inches(12.0), Inches(1.0),
              "The CURRENT plan does NOT pay anything for renewals. It only counts NB + RWR toward the 35-policy tier. "
              "When 50% of RWR moves to REN, the NB+RWR count drops, the tier drops, the bonus drops. "
-             "Renewals 'paying more' is only true under the NEW plan, where the retention bonus pays for premium retained.",
+             "Renewals 'paying more' is only true under the NEW plan, where the REN tier pays a separate bonus once retention rate hits 30%.",
              font_size=15, color=BLACK)
 
     add_text(s, Inches(0.5), Inches(3.0), Inches(12.3), Inches(0.5),
@@ -684,7 +681,7 @@ def slide_why_current_drops(prs, idx, total):
     add_text(s, Inches(0.5), Inches(5.5), Inches(12.3), Inches(0.5),
              "Bottom line:", font_size=16, bold=True, color=NAVY)
     items = [
-        "Per swapped policy: Current loses ~$10 from the count tier. New plan gains via the retention bonus ($5 per $1,000 retained) and RWR step-down ($2-$4 per RWR).",
+        "Per swapped policy: Current loses ~$10 from the count tier. New plan gains by climbing the REN premium tiers as the renewal book grows.",
         "Under Current, the agency literally pays LESS when the agent does the right thing.",
         "Under the new plan, the agent gets MORE for retaining instead of rewriting - the exact incentive we want.",
     ]
@@ -721,18 +718,14 @@ def slide_calc_walkthrough(prs, idx, total):
         y = Inches(1.55)
         line_h = Inches(0.215)
         lines = [
-            ("Volume:", True, hdr),
-            (f"  NB: {nb_c}, ${nb_p/1000:.0f}k W / ${nb_col/1000:.1f}k C ({a['nb_col_pct']*100:.0f}%, avg ${a['avg_nb']:,.0f})", False, BLACK),
-            (f"  RWR: {rwr_c}, ${rwr_p/1000:.0f}k W / ${rwr_col/1000:.1f}k C ({a['rwr_col_pct']*100:.0f}%, avg ${a['avg_rwr']:,.0f})", False, BLACK),
-            (f"  REN: {ren_c}, ${ren_p/1000:.0f}k W / ${ren_col/1000:.1f}k C ({a['ren_col_pct']*100:.0f}%, avg ${a['avg_ren']:,.0f})", False, BLACK),
-            ("Per-policy BASE (NB & RWR only):", True, hdr),
-            (f"  NB tier '{a['nb_tier_label']}': {nb_c} x ${a['nb_per']} = ${a['nb_base_pay']:.0f}", False, NAVY),
-            (f"  RWR tier '{a['rwr_tier_label']}': {rwr_c} x ${a['rwr_per']} = ${a['rwr_base_pay']:.0f}", False, NAVY),
-            ("Collected incentive (>$1,200 NB & RWR only):", True, hdr),
-            (f"  NB +${a['nb_inc_per_policy']}/pol x {a['nb_above_1200']*100:.0f}% = ${a['nb_col_pay']:.0f}", False, NAVY),
-            (f"  RWR +${a['rwr_inc_per_policy']}/pol x {a['rwr_above_1200']*100:.0f}% = ${a['rwr_col_pay']:.0f}", False, NAVY),
-            ("Renewals paid via retention bonus only:", True, hdr),
-            (f"  Retention = REN ${ren_p/1000:.0f}k x 0.5% = ${a['retention_bonus']:.0f}", False, NAVY),
+            ("Monthly volume:", True, hdr),
+            (f"  NB: {nb_c} policies, ${nb_p/1000:.0f}k written", False, BLACK),
+            (f"  RWR: {rwr_c} policies, ${rwr_p/1000:.0f}k written", False, BLACK),
+            (f"  REN: {ren_c} policies, ${ren_p/1000:.0f}k written", False, BLACK),
+            ("Hit a premium tier:", True, hdr),
+            (f"  NB ${nb_p/1000:.0f}k -> {a['nb_tier_label']} = ${a['nb_target']:.0f}", False, NAVY),
+            (f"  RWR ${rwr_p/1000:.0f}k -> {a['rwr_tier_label']} = ${a['rwr_target']:.0f}", False, NAVY),
+            (f"  REN ${ren_p/1000:.0f}k -> {a['ren_tier_label']} = ${a['ren_target']:.0f}", False, NAVY),
             (f"TARGET TOTAL = ${a['total_target']:.0f}", True, hdr),
             ("Apply gates:", True, hdr),
             (f"  NB ${nb_p/1000:.0f}k vs $45k: {'PASS' if a['nb_qual'] else 'FAIL'}", False, GREEN if a['nb_qual'] else RED),
@@ -825,8 +818,8 @@ def slide_swap_comparison(prs, idx, total, real, swap, flip):
     items = [
         f"Current plan COLLAPSES under the flip (${flip['cur']:,.0f} vs today's ${real['cur']:,.0f}). It only rewards rewrite VOLUME.",
         f"New plan WITH MIN under 100% FLIP = ${flip['a_min']:,.0f} ({flip['a_min']/real['cur']*100:.0f}% of today's $12,220). The agency keeps more profit while still rewarding the right behavior.",
-        f"New plan rewards what the current plan ignores: keeping the customer (retention bonus) and collecting more money upfront (kicker).",
-        f"The pitch to the agent: 'today you're earning ${real['cur']/6/4:.0f}/mo on rewrites. Under the new plan, when you renew instead, the retention bonus pays you for the premium you kept on the books.'",
+        f"New plan rewards what the current plan ignores: writing bigger NB books AND keeping renewals - each has its own premium tier ladder.",
+        f"The pitch to the agent: 'today you're earning ${real['cur']/6/4:.0f}/mo on rewrites. Under the new plan, when you renew instead, the REN tier kicks in - up to $800 at $100k retained.'",
     ]
     add_bullets(s, Inches(0.7), Inches(4.5), Inches(12.0), Inches(2.6), items, font_size=13)
 
@@ -879,19 +872,19 @@ def slide_recommendation(prs, idx, total):
     add_text(s, Inches(0.5), Inches(3.0), Inches(12.3), Inches(0.5),
              "Why the new plan beats today's:", font_size=18, bold=True, color=NAVY)
     items = [
-        "Pays for RENEWALS (today's plan pays $0 for renewals) - turns retention into a paying behavior.",
-        "Pays MORE on bigger premium policies via NB tiers - aligns agent pay with agency commission.",
-        "Pays MORE on policies with higher collected % via the kicker - rewards getting cash up front.",
-        "Costs LESS at full target than today's count-tier plan - new plan FLIP $6,475 vs current $12,220.",
+        "Same structure as today (count tiers -> $X) but driven by PREMIUM written, not policy count.",
+        "Pays for RENEWALS (today's plan pays $0) - REN gets its own tier ladder starting at $25k.",
+        "Bigger jumps at the top tiers - $1,000 NB at $100k premium, with linear 1% upside above.",
+        "Costs LESS at full target than today's count-tier plan - new plan FLIP $6,905 vs current $12,220.",
     ]
     add_bullets(s, Inches(0.7), Inches(3.5), Inches(12.0), Inches(2.0), items, font_size=14)
 
     add_text(s, Inches(0.5), Inches(5.7), Inches(12.3), Inches(0.5),
              "Levers to fine-tune over time:", font_size=18, bold=True, color=NAVY)
     add_text(s, Inches(0.7), Inches(6.2), Inches(12.0), Inches(1.0),
-             "1) Retention bonus rate (0.5% today - dial up if too lean, down if too rich).   "
-             "2) Minimum thresholds (NB $45k / retention 30% - soften if too punishing, tighten if too easy).   "
-             "3) Per-policy NB tier amounts and collected-kicker bands.",
+             "1) Tier amounts (lower entry / higher top to motivate harder).   "
+             "2) Tier breakpoints ($45k entry / $100k top - tighten or loosen the ladder).   "
+             "3) Retention rate gate (30% today - dial up over time as the renewal book builds).",
              font_size=13, color=DARK_GRAY)
 
 
@@ -959,7 +952,8 @@ def build():
 
     real, swap, flip, per_agent = compute_totals()
 
-    # Build all slides
+    # Build all slides. Kicker slide dropped - the new tier plan has no collected
+    # kicker; tier amounts already bake in that behavior.
     builders = [
         lambda t: slide_cover(prs),
         lambda t: slide_glossary(prs, 2, t),
@@ -967,22 +961,21 @@ def build():
         lambda t: slide_goals(prs, 4, t),
         lambda t: slide_plan_a_details_new(prs, 5, t),
         lambda t: slide_minimums(prs, 6, t),
-        lambda t: slide_kicker(prs, 7, t),
-        lambda t: slide_safe_net(prs, 8, t),
-        lambda t: slide_safe_net_real(prs, 9, t),
-        lambda t: slide_why_current_drops(prs, 10, t),
-        lambda t: slide_calc_walkthrough(prs, 11, t),
+        lambda t: slide_safe_net(prs, 7, t),
+        lambda t: slide_safe_net_real(prs, 8, t),
+        lambda t: slide_why_current_drops(prs, 9, t),
+        lambda t: slide_calc_walkthrough(prs, 10, t),
     ]
     # Per-agent slides (6)
     for i, agent in enumerate(AGENT_NAMES):
-        idx = 12 + i
+        idx = 11 + i
         builders.append(lambda t, a=agent, ix=idx: slide_agent_detail(prs, ix, t, a, per_agent))
     # Remaining
     builders.extend([
-        lambda t: slide_swap_comparison(prs, 18, t, real, swap, flip),
-        lambda t: slide_profitability(prs, 19, t),
-        lambda t: slide_recommendation(prs, 20, t),
-        lambda t: slide_roadmap(prs, 21, t),
+        lambda t: slide_swap_comparison(prs, 17, t, real, swap, flip),
+        lambda t: slide_profitability(prs, 18, t),
+        lambda t: slide_recommendation(prs, 19, t),
+        lambda t: slide_roadmap(prs, 20, t),
         lambda t: slide_closing(prs),
     ])
     total = len(builders)
