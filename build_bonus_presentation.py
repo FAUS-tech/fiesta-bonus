@@ -905,6 +905,63 @@ def slide_examples_combined(prs, idx, total):
                   font_size=9, row_height_in=0.28, first_col_bold=True)
 
 
+def slide_current_vs_new(prs, idx, total):
+    """Per agent-month: today's CURRENT bonus vs the new plan total, sorted
+    by delta descending. Three scenarios side by side, top 10 per scenario."""
+    s = add_slide(prs)
+    header_strip(s, "Current vs New Plan - Per Agent-Month Comparison",
+                 "CURRENT = today's count-tier on NB+RWR. NEW = tier-bonus (NB + RWR + REN). Sorted by delta. Top 10 per scenario.")
+    footer(s, idx, total)
+
+    scenarios = [
+        ('REAL (today)', lambda d: d, NAVY),
+        ('50% SWAP', lambda d: swap_rwr_to_ren(d, 0.5), ACCENT_BLUE),
+        ('100% FLIP', full_flip, GOLD),
+    ]
+    x_positions = [Inches(0.3), Inches(4.62), Inches(8.94)]
+    for (sc_name, sc_fn, hdr), x in zip(scenarios, x_positions):
+        rows_data = []
+        scen_total_cur = scen_total_new = 0
+        for agent in AGENT_NAMES:
+            for month in MONTHS:
+                d = sc_fn(AGENTS[agent][month])
+                cur = current_bonus(d['NB'][0], d['RWR'][0])
+                nb_b, _, _ = nb_tier_bonus(d['NB'][1])
+                rwr_b, _, _ = rwr_tier_bonus(d['RWR'][1])
+                ren_b, _, _ = ren_tier_bonus(d['REN'][1])
+                nb_qual = d['NB'][1] >= NB_MIN_PREMIUM
+                new_total = (nb_b if nb_qual else 0) + (rwr_b if nb_qual else 0) + ren_b
+                delta = new_total - cur
+                scen_total_cur += cur
+                scen_total_new += new_total
+                rows_data.append((agent, month, cur, new_total, delta))
+        rows_data.sort(key=lambda x: -x[4])
+        rows_data = rows_data[:10]
+
+        add_bar(s, x, Inches(1.1), Inches(4.05), Inches(0.4), hdr)
+        add_text(s, x, Inches(1.1), Inches(4.05), Inches(0.4),
+                 sc_name, font_size=14, bold=True, color=WHITE,
+                 align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+
+        table_rows = [['Agent / Mo', 'Current', 'New', 'Delta']]
+        for agent, month, cur, new_total, delta in rows_data:
+            first = agent.split()[0]
+            sign = '+' if delta > 0 else ''
+            table_rows.append([f"{first} {month[:3]}",
+                               f"${cur:,.0f}",
+                               f"${new_total:,.0f}",
+                               f"{sign}${delta:,.0f}"])
+        table_rows.append(['4-mo total (all agents)',
+                           f"${scen_total_cur:,.0f}",
+                           f"${scen_total_new:,.0f}",
+                           f"{'+' if scen_total_new-scen_total_cur >= 0 else ''}${scen_total_new-scen_total_cur:,.0f}"])
+
+        add_table(s, x, Inches(1.55), Inches(4.05), Inches(5.5), table_rows,
+                  header_fill=hdr,
+                  col_widths=[Inches(1.4), Inches(0.85), Inches(0.85), Inches(0.95)],
+                  font_size=9, row_height_in=0.28, first_col_bold=True)
+
+
 def slide_swap_comparison(prs, idx, total, real, swap, flip):
     s = add_slide(prs)
     header_strip(s, "Headline - 4-Month Totals Across 3 Scenarios (6 agents)",
@@ -1081,8 +1138,9 @@ def build():
         lambda t: slide_examples_single_line(prs, 8, t, 'RWR', rwr_tier_bonus, rwr_ladder),
         lambda t: slide_examples_single_line(prs, 9, t, 'REN', ren_tier_bonus, ren_ladder),
         lambda t: slide_examples_combined(prs, 10, t),
-        lambda t: slide_swap_comparison(prs, 11, t, real, swap, flip),
-        lambda t: slide_recommendation(prs, 12, t),
+        lambda t: slide_current_vs_new(prs, 11, t),
+        lambda t: slide_swap_comparison(prs, 12, t, real, swap, flip),
+        lambda t: slide_recommendation(prs, 13, t),
         lambda t: slide_closing(prs),
     ]
     total = len(builders)

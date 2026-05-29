@@ -598,9 +598,10 @@ def build_readme(wb):
         ('  4. RWR Bonus Examples', 'Same view for the RWR ladder.'),
         ('  5. REN Bonus Examples', 'Same view for the REN ladder.'),
         ('  6. Combined Bonus Examples', 'NB + RWR + REN side-by-side with the TOTAL BONUS per agent-month.'),
-        ('  7. Chargeback Process', 'Step-by-step 90-day reversal procedure.'),
-        ('  8. Manual Tracker Template', 'Monthly template for verified bonus tracking.'),
-        ('  9. Source Data', 'Raw NB/RWR/REN volumes from Jan-Apr 2026.'),
+        ('  7. Current vs New Comparison', 'Today\'s plan vs the new plan per agent-month, with the DELTA (who wins / who loses).'),
+        ('  8. Chargeback Process', 'Step-by-step 90-day reversal procedure.'),
+        ('  9. Manual Tracker Template', 'Monthly template for verified bonus tracking.'),
+        ('  10. Source Data', 'Raw NB/RWR/REN volumes from Jan-Apr 2026.'),
     ]
     for r, (a, b) in enumerate(rows, 2):
         ws.cell(row=r, column=1, value=a)
@@ -1898,6 +1899,144 @@ def build_combined_examples(wb):
     ws.freeze_panes = 'A4'
 
 
+def _build_one_comparison_table(ws, r, scenario_label, scenario_fn):
+    """One scenario block comparing today's CURRENT plan (count-tier on NB+RWR)
+    vs the new plan's total bonus (NB tier + RWR tier + REN tier).
+    Sorted by delta (new - current) descending: biggest wins on top."""
+
+    ws.cell(row=r, column=1, value=scenario_label).font = SECTION_FONT
+    ws.cell(row=r, column=1).fill = SECTION_FILL
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=10)
+    ws.row_dimensions[r].height = 22
+    r += 1
+
+    headers = ['Agent', 'Month', 'NB #', 'RWR #',
+               'CURRENT bonus (today)',
+               'NB Bonus', 'RWR Bonus', 'REN Bonus',
+               'NEW TOTAL', 'DELTA (new - current)']
+    for i, h in enumerate(headers, 1):
+        style_header(ws.cell(row=r, column=i, value=h))
+    ws.row_dimensions[r].height = 26
+    r += 1
+
+    rows_data = []
+    for agent in AGENT_NAMES:
+        for month in MONTHS:
+            d = scenario_fn(AGENTS[agent][month])
+            nb_c = d['NB'][0]
+            rwr_c = d['RWR'][0]
+            cur = current_bonus(nb_c, rwr_c)
+            nb_b, _, _ = nb_tier_bonus(d['NB'][1])
+            rwr_b, _, _ = rwr_tier_bonus(d['RWR'][1])
+            ren_b, _, _ = ren_tier_bonus(d['REN'][1])
+            nb_qual = d['NB'][1] >= NB_MIN_PREMIUM
+            nb_paid = nb_b if nb_qual else 0
+            rwr_paid = rwr_b if nb_qual else 0
+            ren_paid = ren_b
+            new_total = nb_paid + rwr_paid + ren_paid
+            delta = new_total - cur
+            rows_data.append((agent, month, nb_c, rwr_c, cur,
+                              nb_paid, rwr_paid, ren_paid, new_total, delta))
+
+    rows_data.sort(key=lambda x: -x[9])  # biggest delta on top
+
+    data_start = r
+    for (agent, month, nb_c, rwr_c, cur,
+         nb_b, rwr_b, ren_b, new_total, delta) in rows_data:
+        ws.cell(row=r, column=1, value=agent).font = Font(bold=True)
+        ws.cell(row=r, column=2, value=month)
+        for col, val in [(3, nb_c), (4, rwr_c)]:
+            c = ws.cell(row=r, column=col, value=val)
+            style_int(c)
+
+        c_cur = ws.cell(row=r, column=5, value=cur)
+        style_dollar(c_cur)
+        c_cur.font = Font(bold=True)
+        c_cur.fill = CURRENT_FILL
+
+        for col, val in [(6, nb_b), (7, rwr_b), (8, ren_b)]:
+            c = ws.cell(row=r, column=col, value=val)
+            style_dollar(c)
+            if val > 0:
+                c.fill = PatternFill('solid', fgColor='E2EFDA')
+                c.font = Font(bold=True, color='006100')
+            else:
+                c.font = Font(color='9C0006')
+
+        c_new = ws.cell(row=r, column=9, value=new_total)
+        style_dollar(c_new)
+        c_new.font = Font(bold=True, size=12, color='FFFFFF')
+        c_new.fill = TIER_FILL_T5 if new_total > 0 else TIER_FILL_NIL
+        c_new.alignment = Alignment(horizontal='center', vertical='center')
+
+        c_delta = ws.cell(row=r, column=10, value=delta)
+        style_dollar(c_delta)
+        if delta > 0:
+            c_delta.fill = PatternFill('solid', fgColor='00B050')
+            c_delta.font = Font(bold=True, size=12, color='FFFFFF')
+        elif delta < 0:
+            c_delta.fill = PatternFill('solid', fgColor='C00000')
+            c_delta.font = Font(bold=True, size=12, color='FFFFFF')
+        else:
+            c_delta.fill = PatternFill('solid', fgColor='D9D9D9')
+            c_delta.font = Font(bold=True, size=12)
+        c_delta.alignment = Alignment(horizontal='center', vertical='center')
+
+        style_data(ws.cell(row=r, column=1))
+        ws.cell(row=r, column=1).font = Font(bold=True)
+        style_data(ws.cell(row=r, column=2))
+
+        ws.row_dimensions[r].height = 22
+        r += 1
+
+    # Scenario totals row
+    tot_cur = sum(x[4] for x in rows_data)
+    tot_new = sum(x[8] for x in rows_data)
+    tot_delta = tot_new - tot_cur
+    ws.cell(row=r, column=1, value='4-MONTH TOTAL (all 6 agents)').font = Font(bold=True)
+    for col in range(1, 11):
+        ws.cell(row=r, column=col).fill = SUB_FILL
+    c = ws.cell(row=r, column=5, value=tot_cur)
+    style_dollar(c); c.font = Font(bold=True, size=12); c.fill = CURRENT_FILL
+    c = ws.cell(row=r, column=9, value=tot_new)
+    style_dollar(c); c.font = Font(bold=True, size=12, color='FFFFFF')
+    c.fill = PatternFill('solid', fgColor='1F4E78')
+    c.alignment = Alignment(horizontal='center', vertical='center')
+    c = ws.cell(row=r, column=10, value=tot_delta)
+    style_dollar(c); c.font = Font(bold=True, size=12, color='FFFFFF')
+    c.fill = PatternFill('solid', fgColor='00B050' if tot_delta >= 0 else 'C00000')
+    c.alignment = Alignment(horizontal='center', vertical='center')
+    ws.row_dimensions[r].height = 28
+    r += 2
+    return r
+
+
+def build_current_vs_new_comparison(wb):
+    """Sheet comparing today's CURRENT bonus (count-tier on NB+RWR) to the
+    new plan's total bonus per agent-month, across all 3 scenarios."""
+    ws = wb.create_sheet('Current vs New Comparison')
+    ws['A1'] = "CURRENT vs NEW PLAN - per agent-month comparison"
+    ws['A1'].font = TITLE_FONT
+    ws.merge_cells('A1:J1')
+    ws['A2'] = ("CURRENT = today's plan: count NB+RWR policies, 30/38/50 tier -> $250/$350/$450 + $10/policy above 50. "
+                "NEW = the new tier-based plan (NB + RWR + REN combined). Sorted by DELTA descending: biggest "
+                "winners on top, biggest losses at the bottom.")
+    ws['A2'].font = Font(italic=True, size=10, color='666666')
+    ws.merge_cells('A2:J2')
+
+    scenarios = [
+        ('SCENARIO 1: REAL DATA (Jan-Apr 2026)',          lambda d: d),
+        ('SCENARIO 2: 50% SWAP (half of RWR -> REN)',     lambda d: swap_rwr_to_ren(d, 0.5)),
+        ('SCENARIO 3: 100% FLIP (RWR fully -> REN)',      full_flip),
+    ]
+    r = 4
+    for scenario_label, scenario_fn in scenarios:
+        r = _build_one_comparison_table(ws, r, scenario_label, scenario_fn)
+
+    set_col_widths(ws, [22, 11, 7, 8, 17, 12, 12, 12, 16, 18])
+    ws.freeze_panes = 'A4'
+
+
 def build_source_data(wb):
     """Raw NB/RWR/REN source data for all 6 agents x 4 months. The data behind every calculation."""
     ws = wb.create_sheet('Source Data')
@@ -2781,7 +2920,8 @@ def build():
     build_executive_summary(wb)
     build_proposal_a(wb)                  # The Bonus Plan rules
     build_bonus_examples(wb)              # 3 sheets: NB / RWR / REN examples
-    build_combined_examples(wb)           # 1 sheet: NB + RWR + REN together + Total Bonus
+    build_combined_examples(wb)           # NB + RWR + REN together + Total Bonus
+    build_current_vs_new_comparison(wb)   # Current bonus vs new total + delta
     build_chargeback(wb)
     build_manual_tracker(wb)
     build_source_data(wb)
