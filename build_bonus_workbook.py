@@ -568,54 +568,36 @@ def build_readme(wb):
 
     rows = [
         ('', ''),
-        ('===== TL;DR (read this first) =====', ''),
-        ('What this is', 'A proposal for a new agent bonus plan. The current plan rewards REWRITING customers (bad for retention). The new plan rewards writing new business AND keeping customers (renewing) AND collecting more money up-front.'),
-        ('Bottom line (4-month total, 6 agents)', 'TODAY: $12,220 paid out under current plan. NEW PLAN with the tiered-premium structure: $1,675 today (most agents do not yet write $45k NB consistently), $3,875 if half the rewrites become renewals, $7,975 if all rewrites had been renewals. The new plan pays LESS when agents are under the entry tier and rewards the SHIFT to writing more premium AND retaining the book.'),
-        ('Recommendation', f'Adopt the new plan with ${NB_MIN_PREMIUM:,} NB monthly minimum + {REN_MIN_RETENTION*100:.0f}% retention minimum. Pilot 90 days side-by-side with the current plan, pay agents the HIGHER of the two during the pilot.'),
-        ('How to read the rest', 'Start with Executive Summary -> The Bonus Plan -> Agent Examples. Use Glossary below to look up terms (NB, RWR, REN, PIF, FLIP, SWAP, etc.).'),
+        ('===== TL;DR =====', ''),
+        ('The problem', "Today's bonus rewards REWRITING customers (counts NB+RWR policies). It pays $0 for renewals - so there's no incentive to keep the book."),
+        ('The new plan', 'Same shape as today (5 tiers) but driven by monthly WRITTEN PREMIUM, not policy count. Each line - NB, RWR, REN - has its own tier ladder.'),
+        ('Bottom line (4-mo, 6 agents)', 'TODAY: $12,220. NEW PLAN: $1,675 if behavior stays the same, $3,875 with 50% renewal shift, $7,975 if all rewrites had been renewals. New plan costs LESS while paying for the right behavior.'),
+        ('Recommendation', f'Adopt the new plan with the ${NB_MIN_PREMIUM:,} NB minimum + {REN_MIN_RETENTION*100:.0f}% retention minimum + 90-day chargeback. Pilot 90 days side-by-side, pay the higher of the two.'),
+        ('', ''),
+        ('===== THE PLAN AT A GLANCE =====', ''),
+        ('NB', 'T1 $45k=$250 | T2 $55k=$375 | T3 $70k=$525 | T4 $85k=$725 | T5 $100k=$1,000. Above $100k: +$50 per $5k.'),
+        ('RWR', 'T1 $45k=$100 | T2 $55k=$200 | T3 $70k=$275 | T4 $85k=$350 | T5 $100k=$500. Above $100k: +$25 per $5k.'),
+        ('REN', 'T1 $25k=$250 | T2 $40k=$350 | T3 $65k=$450 | T4 $80k=$550 | T5 $100k=$800. Above $100k: +$40 per $5k.'),
+        ('Minimum requirements', f'NB premium >= ${NB_MIN_PREMIUM:,} | Retention rate >= {REN_MIN_RETENTION*100:.0f}% | RWR follows NB gate.'),
+        ('90-day chargeback', '100% of paid bonus is reversed if the policy cancels or rewrites within 90 days of effective date.'),
+        ('Manual tracker', 'Required for every policy. No tracker entry = no bonus on that policy.'),
         ('', ''),
         ('===== GLOSSARY =====', ''),
-        ('NB', 'NEW BUSINESS - first time the customer is on the books. Brand new policy.'),
-        ('RWR', 'REWRITE - cancel an existing policy and write a NEW one (usually at a different carrier). Customer ends up with a brand new 6-month term. Churns the book.'),
-        ('REN', 'RENEWAL - the existing policy renews at the SAME carrier. Customer stays put.'),
-        ('PIF', 'PAID IN FULL - customer pays the entire premium upfront. Zero chargeback risk.'),
-        ('Written premium', 'The total cost of the policy for the 6-month term.'),
-        ('Collected %', 'The % of total premium the customer actually paid. Down payment / total = collected %.'),
-        ('Safe Net', 'Money left in the agency after corporate royalty (21%) and overhead (30%). The bonus comes out of safe net.'),
-        ('Chargeback', 'If a policy cancels mid-term, the carrier reverses unearned commission. Bonus on that policy is also reversed if cancel happens within 90 days.'),
-        ('Kicker', 'Bonus multiplier based on collected %. Higher down payment = bigger multiplier.'),
-        ('Minimum / Gate', 'A monthly premium threshold the agent must clear to earn that bonus line.'),
-        ('Retention Rate', 'Of the policies up for renewal this month, the % that actually renewed at the same carrier.'),
-        ('Retention Rate Gate', 'The 30% minimum REN must hit to qualify - retention rate = (policies renewed) / (policies up for renewal). Below 30% = no REN bonus, no matter the premium.'),
-        ('FLIP scenario', 'Hypothetical: "what if all rewrites had been renewals?" The strongest behavior-change test.'),
-        ('SWAP scenario', 'Hypothetical: "what if half the rewrites became renewals?" A realistic transition target.'),
-        ('', ''),
-        ('===== THE NEW BONUS PLAN (one-paragraph summary) =====', ''),
-        ('Same idea as today', 'Today: 30/38/50 policies in a count tier earns $250/$350/$450 + $10/policy after. New plan: 5 tiers by monthly WRITTEN PREMIUM instead of policy count, scaling to $1,000 at $100k.'),
-        ('New Business (NB)', '5 tiers by monthly NB written premium: T1 $45k=$250, T2 $55k=$375, T3 $70k=$525, T4 $85k=$725, T5 $100k=$1,000. Above $100k: +$50 per $5k (1% rate, no cap). Min req = T1 entry ($45k).'),
-        ('Rewrites (RWR)', 'Same tier breakpoints as NB, pays about half: T1=$100, T2=$200, T3=$275, T4=$350, T5=$500. Above $100k: +$25/$5k. No separate floor - gated by NB $45k minimum.'),
-        ('Renewals (REN)', '5 tiers by monthly REN written premium starting at $25k: T1 $25k=$250, T2 $40k=$350, T3 $65k=$450, T4 $80k=$550, T5 $100k=$800. Above $100k: +$40 per $5k. Gate = retention rate >= 30%.'),
-        ('', ''),
-        ('===== KEY MECHANICS =====', ''),
-        ('Why Renewals Now Pay', "Today's plan pays nothing for renewals - so agents have no incentive to keep the customer. The new plan gives REN its own premium tier ladder ($200-$800) gated by the 30% retention rate. Retain the book = earn the REN tier."),
-        ('Why the 50%-Swap and 100%-Flip Examples', 'Today agents are mostly rewriting. To prove the new plan rewards the shift to renewing, each agent example is ALSO run with: (a) 50% of rewrites converted to renewals, and (b) 100% of rewrites flipped to renewals. Same dollars, just reclassified.'),
-        ('Profit Protection', 'Bonus paid = target (no automatic cap). Three protections instead: (1) MINIMUM REQUIREMENTS gate each bonus line, (2) 40% REVIEW THRESHOLD flags outlier months for ownership, (3) 90-DAY CHARGEBACK reverses bonus on policies that cancel/rewrite within 90 days.'),
-        ('Minimum Requirements (NEW)', f'NB minimum: ${NB_MIN_PREMIUM:,} written premium/mo. REN minimum: retain {REN_MIN_RETENTION*100:.0f}% of book. RWR follows NB. Replaces today\'s 35-policy NB+RWR floor.'),
+        ('NB', 'NEW BUSINESS - first time the customer is on the books.'),
+        ('RWR', 'REWRITE - cancel an existing policy, write a new one. Churns the book.'),
+        ('REN', 'RENEWAL - existing policy renews at the same carrier. Customer stays.'),
+        ('Retention rate', 'Of the policies up for renewal this month, the % that renewed.'),
+        ('Written premium', 'Total cost of the policy for the 6-month term.'),
+        ('FLIP scenario', '"What if all rewrites had been renewals?" Strongest behavior-change test.'),
+        ('SWAP scenario', '"What if half the rewrites became renewals?" Realistic transition target.'),
         ('', ''),
         ('===== SHEET MAP =====', ''),
-        ('  1. Executive Summary', 'Bottom-line comparison: Current vs New Plan, all 6 agents across 4 months. Real + 50% swap + 100% flip scenarios. No-min and with-min totals.'),
-        ('  2. The Bonus Plan', 'The plan rules in one place: 5-tier ladders for NB, RWR, REN by monthly written premium. Minimums, chargeback, and a worked example at the bottom.'),
-        ('  3. Minimum Requirements', f'How the ${NB_MIN_PREMIUM:,} NB and {REN_MIN_RETENTION*100:.0f}% retention gates work.'),
-        ('  4. Why Current Drops', 'Direct answer: why the current bonus drops when RWR converts to REN, even though "renewals pay more than rewrites" is true under the new plan.'),
-        ('  5. Agent Examples - Real', 'Month-by-month bonus for the 6 agents on actual Jan-Apr 2026 data.'),
-        ('  6. Agent Examples - 50% Swap', 'Same 6 agents, 50% of RWR moved to REN. Shows realistic transition earnings.'),
-        ('  7. Agent Examples - 100% Flip', 'Same 6 agents, 100% of RWR moved to REN. Strongest behavior-change test.'),
-        ('  8. Source Data', 'Raw NB/RWR/REN volumes from Jan-Apr 2026 pulled from the pivots.'),
-        ('  9. Safe Net Explained', 'Plain-language walk-through of safe net (commission - royalty - overhead).'),
-        ('  10. Profitability Cap', 'How the 40% safe-net review threshold protects ownership.'),
-        ('  11. Chargeback Process', '90-day cancellation/rewrite reversal procedure.'),
-        ('  12. Manual Tracker Template', 'Monthly template for verified bonus tracking.'),
-        ('  13. Assumptions', 'All economic and modeling assumptions in one place.'),
+        ('  1. Executive Summary', 'Bottom-line numbers and per-agent rows.'),
+        ('  2. The Bonus Plan', 'Full plan rules: tier ladders, minimums, chargeback, worked example.'),
+        ('  3. Agent Examples - 100% Flip', 'Per-agent month-by-month under the strongest behavior shift.'),
+        ('  4. Chargeback Process', 'Step-by-step 90-day reversal procedure.'),
+        ('  5. Manual Tracker Template', 'Monthly template for verified bonus tracking.'),
+        ('  6. Source Data', 'Raw NB/RWR/REN volumes from Jan-Apr 2026.'),
     ]
     for r, (a, b) in enumerate(rows, 2):
         ws.cell(row=r, column=1, value=a)
@@ -853,13 +835,13 @@ def build_proposal_a(wb):
         if h: style_header(ws.cell(row=r, column=i, value=h))
     r += 1
     nb_rows = [
-        ('Below T1', 'Under $45,000', '$0', '-', 'Below the minimum requirement. No NB bonus this month.'),
-        ('T1', '$45,000 (minimum)', '$250', 'entry', 'NB minimum reached. Same idea as today: hitting the floor earns the entry bonus.'),
-        ('T2', '$55,000', '$375', '+$125 for +$10k', 'Push past T1, +$125 reward for the next $10k.'),
-        ('T3', '$70,000', '$525', '+$150 for +$15k', 'Strong month. +$150 for the next $15k of premium written.'),
-        ('T4', '$85,000', '$725', '+$200 for +$15k', 'Reward gets bigger - agent is into the top half of the ladder.'),
-        ('T5', '$100,000', '$1,000', '+$275 for +$15k', 'Top tier. Biggest single jump - $1,000 at $100k premium.'),
-        ('Above $100k', '+$50 per $5k extra', 'Linear 1%', '+$50/$5k', 'No cap. $110k -> $1,100. $150k -> $1,500. Above $100k is straight 1% of premium.'),
+        ('Below T1', 'Under $45,000', '$0', '-', 'Below minimum requirement.'),
+        ('T1 (min)', '$45,000', '$250', 'entry', 'Minimum reached.'),
+        ('T2', '$55,000', '$375', '+$125', ''),
+        ('T3', '$70,000', '$525', '+$150', ''),
+        ('T4', '$85,000', '$725', '+$200', ''),
+        ('T5', '$100,000', '$1,000', '+$275', 'Top tier - biggest jump.'),
+        ('Above $100k', '+$5k extra', '+$50', '1% rate', 'No cap. $150k -> $1,500.'),
     ]
     for row in nb_rows:
         for i, v in enumerate(row, 1):
@@ -879,14 +861,14 @@ def build_proposal_a(wb):
         if h: style_header(ws.cell(row=r, column=i, value=h))
     r += 1
     rwr_rows = [
-        ('Below T1', 'Under $45,000', '$0', 'Below T1. No RWR bonus.'),
-        ('T1', '$45,000', '$100', 'Entry.'),
-        ('T2', '$55,000', '$200', '+$100 for the next $10k.'),
-        ('T3', '$70,000', '$275', '+$75 for the next $15k.'),
-        ('T4', '$85,000', '$350', '+$75 for the next $15k.'),
-        ('T5', '$100,000', '$500', 'Top tier. +$150 for the final $15k.'),
-        ('Above $100k', '+$25 per $5k extra', '0.5% rate', 'Half of NB above-cap rate.'),
-        ('Gate', 'NB premium >= $45k', '', 'No separate RWR minimum - RWR is gated by the NB minimum. Meet NB and the RWR ladder unlocks.'),
+        ('Below T1', 'Under $45,000', '$0', ''),
+        ('T1', '$45,000', '$100', ''),
+        ('T2', '$55,000', '$200', ''),
+        ('T3', '$70,000', '$275', ''),
+        ('T4', '$85,000', '$350', ''),
+        ('T5', '$100,000', '$500', 'Top tier.'),
+        ('Above $100k', '+$5k extra', '+$25', '0.5% rate.'),
+        ('Gate', 'NB premium >= $45k', '', 'No separate RWR min. NB gate unlocks RWR.'),
     ]
     for row in rwr_rows:
         for i, v in enumerate(row, 1):
@@ -906,14 +888,14 @@ def build_proposal_a(wb):
         if h: style_header(ws.cell(row=r, column=i, value=h))
     r += 1
     ren_rows = [
-        ('Below T1', 'Under $25,000', '$0', 'Below T1. No REN bonus.'),
-        ('T1', '$25,000', '$250', 'Entry - low bar to acknowledge renewals are smaller books today.'),
-        ('T2', '$40,000', '$350', '+$100 for the next $15k.'),
-        ('T3', '$65,000', '$450', '+$100 for the next $25k.'),
-        ('T4', '$80,000', '$550', '+$100 for the next $15k.'),
-        ('T5', '$100,000', '$800', 'Top tier. +$250 for the final $20k - biggest jump at the top.'),
-        ('Above $100k', '+$40 per $5k extra', '0.8% rate', 'No cap. $150k REN -> $1,200. Rewards growing the renewal book past $100k.'),
-        ('Gate', 'Retention rate >= 30%', '', f'Agent must retain at least 30% of their assigned renewal book to earn ANY REN bonus this month.'),
+        ('Below T1', 'Under $25,000', '$0', ''),
+        ('T1', '$25,000', '$250', 'Entry - lower bar (smaller books).'),
+        ('T2', '$40,000', '$350', ''),
+        ('T3', '$65,000', '$450', ''),
+        ('T4', '$80,000', '$550', ''),
+        ('T5', '$100,000', '$800', 'Top tier - biggest jump.'),
+        ('Above $100k', '+$5k extra', '+$40', '0.8% rate. No cap.'),
+        ('Gate', 'Retention rate >= 30%', '', 'Must retain >= 30% of assigned renewal book.'),
     ]
     for row in ren_rows:
         for i, v in enumerate(row, 1):
@@ -933,12 +915,12 @@ def build_proposal_a(wb):
         if h: style_header(ws.cell(row=r, column=i, value=h))
     r += 1
     extra_rows = [
-        ('Monthly Minimum - NB', f'${NB_MIN_PREMIUM:,} written premium', 'NB bonus paid ONLY if monthly NB written premium reaches $45k (the T1 entry).'),
-        ('Monthly Minimum - REN', f'Retain >= {REN_MIN_RETENTION*100:.0f}% of agent\'s book', 'REN bonus paid ONLY if the agent retained at least 30% of their assigned renewal book this month.'),
-        ('Monthly Minimum - RWR', 'NB gate met', 'RWR bonus paid ONLY if NB gate met. RWR has no separate floor of its own.'),
-        ('Chargeback', '3 months (90 days)', '100% of the paid bonus on a policy is REVERSED if the policy cancels/rewrites within 90 days of effective date.'),
-        ('Excel Tracker', 'Required for every policy', 'Agent must enter policy info, down payment, and premium in the manual tracker. No entry = no bonus on that policy.'),
-        ('Renewal Book of Business', 'Assigned per agent', 'Each agent has an assigned renewal book. Newer agents who do not have their own renewals get a book reassigned from former employees. The agent is responsible for renewing that book.'),
+        ('NB minimum', f'${NB_MIN_PREMIUM:,} monthly written premium', 'NB premium below $45k -> NB bonus = $0 (also blocks RWR).'),
+        ('REN minimum', f'>= {REN_MIN_RETENTION*100:.0f}% retention rate of book', 'Retention < 30% -> REN bonus = $0.'),
+        ('RWR gate', 'NB minimum met', 'No separate RWR floor.'),
+        ('90-day chargeback', '100% reversal', 'Bonus on a policy is REVERSED if it cancels/rewrites within 90 days of effective date.'),
+        ('Manual tracker', 'Required per policy', 'No entry = no bonus on that policy.'),
+        ('Renewal book', 'Assigned per agent', 'Newer agents inherit a book from former employees.'),
     ]
     for row in extra_rows:
         for i, v in enumerate(row, 1):
@@ -2520,22 +2502,13 @@ def build():
 
     build_readme(wb)
     build_executive_summary(wb)
-    build_proposal_a(wb)                  # THE PLAN (the only plan)
-    build_minimum_requirements(wb)
-    build_why_current_drops(wb)
-    build_agent_examples(wb, swap=False)
-    build_agent_examples(wb, swap=True)
-    build_agent_examples_flip(wb)         # NEW: 100% flip scenario
-    build_source_data(wb)                  # NEW: raw NB/RWR/REN data
-    build_safe_net_simple(wb)
-    # Collected kicker no longer part of the plan - sheet removed.
-    # build_kicker_logic(wb)
-    build_profitability(wb)
+    build_proposal_a(wb)                  # The Bonus Plan rules
+    build_agent_examples_flip(wb)         # Per-agent under 100% FLIP (cleanest view)
     build_chargeback(wb)
     build_manual_tracker(wb)
-    build_assumptions(wb)
+    build_source_data(wb)
 
-    out = '/home/user/fiesta-bonus/output/Bonus_Plan_FINAL.xlsx'
+    out = '/home/user/fiesta-bonus/output/Bonus_Plan_SIMPLE.xlsx'
     wb.save(out)
     print(f"Saved: {out}")
     return out

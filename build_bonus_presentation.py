@@ -952,37 +952,30 @@ def build():
 
     real, swap, flip, per_agent = compute_totals()
 
-    # Build all slides. Kicker slide dropped - the new tier plan has no collected
-    # kicker; tier amounts already bake in that behavior.
+    # Simplified deck - only the slides that matter for the boss decision.
     builders = [
         lambda t: slide_cover(prs),
-        lambda t: slide_glossary(prs, 2, t),
-        lambda t: slide_problem(prs, 3, t),
-        lambda t: slide_goals(prs, 4, t),
-        lambda t: slide_plan_a_details_new(prs, 5, t),
-        lambda t: slide_minimums(prs, 6, t),
-        lambda t: slide_safe_net(prs, 7, t),
-        lambda t: slide_safe_net_real(prs, 8, t),
-        lambda t: slide_why_current_drops(prs, 9, t),
-        lambda t: slide_calc_walkthrough(prs, 10, t),
+        lambda t: slide_problem(prs, 2, t),
+        lambda t: slide_plan_a_details_new(prs, 3, t),
+        lambda t: slide_minimums(prs, 4, t),
+        lambda t: slide_why_current_drops(prs, 5, t),
+        lambda t: slide_calc_walkthrough(prs, 6, t),
     ]
     # Per-agent slides (6)
     for i, agent in enumerate(AGENT_NAMES):
-        idx = 11 + i
+        idx = 7 + i
         builders.append(lambda t, a=agent, ix=idx: slide_agent_detail(prs, ix, t, a, per_agent))
-    # Remaining
+    # Final headline + recommendation
     builders.extend([
-        lambda t: slide_swap_comparison(prs, 17, t, real, swap, flip),
-        lambda t: slide_profitability(prs, 18, t),
-        lambda t: slide_recommendation(prs, 19, t),
-        lambda t: slide_roadmap(prs, 20, t),
+        lambda t: slide_swap_comparison(prs, 13, t, real, swap, flip),
+        lambda t: slide_recommendation(prs, 14, t),
         lambda t: slide_closing(prs),
     ])
     total = len(builders)
     for fn in builders:
         fn(total)
 
-    out = '/home/user/fiesta-bonus/output/Bonus_Plan_FINAL.pptx'
+    out = '/home/user/fiesta-bonus/output/Bonus_Plan_SIMPLE.pptx'
     prs.save(out)
     print(f"Saved: {out} ({total} slides)")
     return out
