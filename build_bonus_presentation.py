@@ -346,18 +346,18 @@ def slide_plan_a_details_new(prs, idx, total):
               header_fill=GREEN, col_widths=[Inches(1.6), Inches(2.4), Inches(2.2)],
               font_size=11, row_height_in=0.32)
 
-    # RWR tier ladder (half of NB)
+    # RWR tier ladder (~half of NB)
     rwr_data = [
-        ["Tier", "Monthly RWR premium", "RWR pays (half of NB)"],
-        ["T1", "$45,000", "$125"],
-        ["T2", "$55,000", "$187.50"],
-        ["T3", "$70,000", "$262.50"],
-        ["T4", "$85,000", "$362.50"],
+        ["Tier", "Monthly RWR premium", "RWR pays (~half of NB)"],
+        ["T1", "$45,000", "$100"],
+        ["T2", "$55,000", "$200"],
+        ["T3", "$70,000", "$275"],
+        ["T4", "$85,000", "$350"],
         ["T5", "$100,000", "$500"],
         ["Above $100k", "+$5k of premium", "+$25 (0.5%)"],
     ]
     add_text(s, Inches(6.85), Inches(1.05), Inches(6.2), Inches(0.3),
-             "2. REWRITES - same breakpoints, pays HALF (gated by NB $45k)", font_size=13, bold=True, color=NAVY)
+             "2. REWRITES - same breakpoints, pays ~HALF (gated by NB $45k)", font_size=13, bold=True, color=NAVY)
     add_table(s, Inches(6.85), Inches(1.4), Inches(6.2), Inches(2.5), rwr_data,
               header_fill=ACCENT_BLUE, col_widths=[Inches(1.4), Inches(2.4), Inches(2.4)],
               font_size=11, row_height_in=0.32)
@@ -367,8 +367,8 @@ def slide_plan_a_details_new(prs, idx, total):
              "3. RENEWALS - own tiers starting at $25k, gated by 30% retention rate", font_size=13, bold=True, color=NAVY)
     ren_data = [
         ["Tier", "T1", "T2", "T3", "T4", "T5", "Above $100k"],
-        ["Monthly REN premium", "$25,000", "$45,000", "$65,000", "$85,000", "$100,000", "+$5k of premium"],
-        ["REN pays (0.80x of NB)", "$200", "$300", "$420", "$580", "$800", "+$40 (0.8%)"],
+        ["Monthly REN premium", "$25,000", "$40,000", "$65,000", "$80,000", "$100,000", "+$5k of premium"],
+        ["REN pays", "$250", "$350", "$450", "$550", "$800", "+$40 (0.8%)"],
     ]
     add_table(s, Inches(0.4), Inches(4.45), Inches(12.7), Inches(1.4), ren_data,
               header_fill=GOLD, col_widths=[Inches(2.6), Inches(1.5), Inches(1.5), Inches(1.5), Inches(1.5), Inches(1.6), Inches(2.5)],
@@ -875,7 +875,7 @@ def slide_recommendation(prs, idx, total):
         "Same structure as today (count tiers -> $X) but driven by PREMIUM written, not policy count.",
         "Pays for RENEWALS (today's plan pays $0) - REN gets its own tier ladder starting at $25k.",
         "Bigger jumps at the top tiers - $1,000 NB at $100k premium, with linear 1% upside above.",
-        "Costs LESS at full target than today's count-tier plan - new plan FLIP $6,905 vs current $12,220.",
+        "Costs LESS at full target than today's count-tier plan - new plan FLIP $7,975 vs current $12,220.",
     ]
     add_bullets(s, Inches(0.7), Inches(3.5), Inches(12.0), Inches(2.0), items, font_size=14)
 

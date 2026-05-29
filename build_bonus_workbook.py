@@ -218,19 +218,19 @@ NB_TIERS = [
 NB_OVERAGE_PER_5K = 50    # +$50 per $5k written premium above $100k
 
 RWR_TIERS = [
-    (45000, 125),
-    (55000, 187.50),
-    (70000, 262.50),
-    (85000, 362.50),
+    (45000, 100),
+    (55000, 200),
+    (70000, 275),
+    (85000, 350),
     (100000, 500),
 ]
 RWR_OVERAGE_PER_5K = 25   # +$25 per $5k above $100k
 
 REN_TIERS = [
-    (25000, 200),
-    (45000, 300),
-    (65000, 420),
-    (85000, 580),
+    (25000, 250),
+    (40000, 350),
+    (65000, 450),
+    (80000, 550),
     (100000, 800),
 ]
 REN_OVERAGE_PER_5K = 40   # +$40 per $5k above $100k
@@ -570,7 +570,7 @@ def build_readme(wb):
         ('', ''),
         ('===== TL;DR (read this first) =====', ''),
         ('What this is', 'A proposal for a new agent bonus plan. The current plan rewards REWRITING customers (bad for retention). The new plan rewards writing new business AND keeping customers (renewing) AND collecting more money up-front.'),
-        ('Bottom line (4-month total, 6 agents)', 'TODAY: $12,220 paid out under current plan. NEW PLAN with the tiered-premium structure: $1,675 today (most agents do not yet write $45k NB consistently), $3,450 if half the rewrites become renewals, $6,905 if all rewrites had been renewals. The new plan pays LESS when agents are under the entry tier and rewards the SHIFT to writing more premium AND retaining the book.'),
+        ('Bottom line (4-month total, 6 agents)', 'TODAY: $12,220 paid out under current plan. NEW PLAN with the tiered-premium structure: $1,675 today (most agents do not yet write $45k NB consistently), $3,875 if half the rewrites become renewals, $7,975 if all rewrites had been renewals. The new plan pays LESS when agents are under the entry tier and rewards the SHIFT to writing more premium AND retaining the book.'),
         ('Recommendation', f'Adopt the new plan with ${NB_MIN_PREMIUM:,} NB monthly minimum + {REN_MIN_RETENTION*100:.0f}% retention minimum. Pilot 90 days side-by-side with the current plan, pay agents the HIGHER of the two during the pilot.'),
         ('How to read the rest', 'Start with Executive Summary -> The Bonus Plan -> Agent Examples. Use Glossary below to look up terms (NB, RWR, REN, PIF, FLIP, SWAP, etc.).'),
         ('', ''),
@@ -593,8 +593,8 @@ def build_readme(wb):
         ('===== THE NEW BONUS PLAN (one-paragraph summary) =====', ''),
         ('Same idea as today', 'Today: 30/38/50 policies in a count tier earns $250/$350/$450 + $10/policy after. New plan: 5 tiers by monthly WRITTEN PREMIUM instead of policy count, scaling to $1,000 at $100k.'),
         ('New Business (NB)', '5 tiers by monthly NB written premium: T1 $45k=$250, T2 $55k=$375, T3 $70k=$525, T4 $85k=$725, T5 $100k=$1,000. Above $100k: +$50 per $5k (1% rate, no cap). Min req = T1 entry ($45k).'),
-        ('Rewrites (RWR)', 'Same tier ladder as NB, paying HALF: T1=$125, T2=$187.50, T3=$262.50, T4=$362.50, T5=$500. Above $100k: +$25/$5k. No separate floor - gated by NB $45k minimum.'),
-        ('Renewals (REN)', '5 tiers by monthly REN written premium starting at $25k: T1 $25k=$200, T2 $45k=$300, T3 $65k=$420, T4 $85k=$580, T5 $100k=$800. Above $100k: +$40 per $5k. Gate = retention rate >= 30%.'),
+        ('Rewrites (RWR)', 'Same tier breakpoints as NB, pays about half: T1=$100, T2=$200, T3=$275, T4=$350, T5=$500. Above $100k: +$25/$5k. No separate floor - gated by NB $45k minimum.'),
+        ('Renewals (REN)', '5 tiers by monthly REN written premium starting at $25k: T1 $25k=$250, T2 $40k=$350, T3 $65k=$450, T4 $80k=$550, T5 $100k=$800. Above $100k: +$40 per $5k. Gate = retention rate >= 30%.'),
         ('', ''),
         ('===== KEY MECHANICS =====', ''),
         ('Why Renewals Now Pay', "Today's plan pays nothing for renewals - so agents have no incentive to keep the customer. The new plan gives REN its own premium tier ladder ($200-$800) gated by the 30% retention rate. Retain the book = earn the REN tier."),
@@ -662,7 +662,7 @@ def build_executive_summary(wb):
     r = 4
     ws.cell(row=r, column=1, value='HEADLINE - 4-MONTH TOTALS ACROSS 3 SCENARIOS (6 agents)').font = SECTION_FONT
     ws.cell(row=r, column=1).fill = SECTION_FILL
-    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=13)
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=12)
     r += 1
 
     hh = ['Plan', 'REAL (today)', '50% SWAP (RWR->REN)', '100% FLIP (RWR<->REN)', 'Read']
@@ -697,16 +697,19 @@ def build_executive_summary(wb):
         "That is the design: 'no bonus until you cover yourself.'"
     )).alignment = Alignment(wrap_text=True)
     ws.cell(row=r, column=1).font = Font(size=11, italic=True)
-    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=13)
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=12)
     ws.row_dimensions[r].height = 38
     r += 2
 
     # Two scenario blocks: REAL, then 50% SWAP
-    headers = ['Month', 'Agent', 'NB', 'RWR', 'REN', 'Current',
-               'Plan no-min', 'Plan WITH MIN', 'vs Current']
+    # Headers include premium $ next to counts so the bonus math is readable
+    # (NB tier and REN tier are driven by premium, not count).
+    headers = ['Month', 'Agent',
+               'NB #', 'NB $', 'RWR #', 'RWR $', 'REN #', 'REN $',
+               'Current', 'Plan no-min', 'Plan WITH MIN', 'vs Current']
     ws.cell(row=r, column=1, value='SCENARIO 1: REAL DATA (Jan-Apr 2026)').font = SECTION_FONT
     ws.cell(row=r, column=1).fill = SECTION_FILL
-    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=9)
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=12)
     r += 1
     for i, h in enumerate(headers, 1):
         c = ws.cell(row=r, column=i, value=h)
@@ -717,33 +720,33 @@ def build_executive_summary(wb):
     for month in MONTHS:
         for agent in AGENT_NAMES:
             d = AGENTS[agent][month]
-            nb_c, rwr_c, ren_c = d['NB'][0], d['RWR'][0], d['REN'][0]
+            nb_c, nb_p = d['NB'][0], d['NB'][1]
+            rwr_c, rwr_p = d['RWR'][0], d['RWR'][1]
+            ren_c, ren_p = d['REN'][0], d['REN'][1]
             cur = current_bonus(nb_c, rwr_c)
             a = calc_proposal_a(d['NB'], d['RWR'], d['REN'])
-            row_vals = [month, agent, nb_c, rwr_c, ren_c, cur,
-                        a['paid'], a['paid_after_min'],
+            row_vals = [month, agent,
+                        nb_c, nb_p, rwr_c, rwr_p, ren_c, ren_p,
+                        cur, a['paid'], a['paid_after_min'],
                         a['paid_after_min'] - cur]
             for i, v in enumerate(row_vals, 1):
                 c = ws.cell(row=r, column=i, value=v)
-                if i in (3,4,5):
-                    style_int(c)
-                elif i >= 6:
-                    style_dollar(c)
-                else:
-                    style_data(c)
-                if i == 7: c.fill = PROP_A_FILL
-                if i == 8: c.fill = PROP_A_FILL; c.font = Font(bold=True)
+                if i in (3,5,7): style_int(c)
+                elif i in (4,6,8) or i >= 9: style_dollar(c)
+                else: style_data(c)
+                if i == 10: c.fill = PROP_A_FILL
+                if i == 11: c.fill = PROP_A_FILL; c.font = Font(bold=True)
             real_totals['current'] += cur
             real_totals['a'] += a['paid']
             real_totals['a_min'] += a['paid_after_min']
             r += 1
 
     ws.cell(row=r, column=1, value='REAL 4-MONTH TOTAL (6 agents)').font = Font(bold=True)
-    ws.cell(row=r, column=6, value=real_totals['current'])
-    ws.cell(row=r, column=7, value=real_totals['a'])
-    ws.cell(row=r, column=8, value=real_totals['a_min'])
-    ws.cell(row=r, column=9, value=real_totals['a_min'] - real_totals['current'])
-    for i in range(6, 10):
+    ws.cell(row=r, column=9, value=real_totals['current'])
+    ws.cell(row=r, column=10, value=real_totals['a'])
+    ws.cell(row=r, column=11, value=real_totals['a_min'])
+    ws.cell(row=r, column=12, value=real_totals['a_min'] - real_totals['current'])
+    for i in range(9, 13):
         c = ws.cell(row=r, column=i)
         style_dollar(c)
         c.font = Font(bold=True)
@@ -754,7 +757,7 @@ def build_executive_summary(wb):
     # SCENARIO 2: 50% SWAP
     ws.cell(row=r, column=1, value='SCENARIO 2: 50% OF RWR CONVERTED TO REN (future-state target)').font = SECTION_FONT
     ws.cell(row=r, column=1).fill = SECTION_FILL
-    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=9)
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=12)
     r += 1
     for i, h in enumerate(headers, 1):
         c = ws.cell(row=r, column=i, value=h)
@@ -765,33 +768,34 @@ def build_executive_summary(wb):
     for month in MONTHS:
         for agent in AGENT_NAMES:
             d = swap_rwr_to_ren(AGENTS[agent][month], 0.5)
-            nb_c, rwr_c, ren_c = d['NB'][0], d['RWR'][0], d['REN'][0]
+            nb_c, nb_p = d['NB'][0], d['NB'][1]
+            rwr_c, rwr_p = d['RWR'][0], d['RWR'][1]
+            ren_c, ren_p = d['REN'][0], d['REN'][1]
             cur = current_bonus(nb_c, rwr_c)
             a = calc_proposal_a(d['NB'], d['RWR'], d['REN'])
-            row_vals = [month, agent, nb_c, rwr_c, ren_c, cur,
-                        a['paid'], a['paid_after_min'],
+            row_vals = [month, agent,
+                        nb_c, nb_p, rwr_c, rwr_p, ren_c, ren_p,
+                        cur, a['paid'], a['paid_after_min'],
                         a['paid_after_min'] - cur]
             for i, v in enumerate(row_vals, 1):
                 c = ws.cell(row=r, column=i, value=v)
-                if i in (3,4,5):
-                    style_int(c)
-                elif i >= 6:
-                    style_dollar(c)
-                else:
-                    style_data(c)
-                if i == 7: c.fill = PROP_A_FILL
-                if i == 8: c.fill = PROP_A_FILL; c.font = Font(bold=True)
+                if i in (3,5,7): style_int(c)
+                elif i in (4,6,8): style_dollar(c)
+                elif i >= 9: style_dollar(c)
+                else: style_data(c)
+                if i == 10: c.fill = PROP_A_FILL
+                if i == 11: c.fill = PROP_A_FILL; c.font = Font(bold=True)
             swap_totals['current'] += cur
             swap_totals['a'] += a['paid']
             swap_totals['a_min'] += a['paid_after_min']
             r += 1
 
     ws.cell(row=r, column=1, value='SWAP 4-MONTH TOTAL (6 agents)').font = Font(bold=True)
-    ws.cell(row=r, column=6, value=swap_totals['current'])
-    ws.cell(row=r, column=7, value=swap_totals['a'])
-    ws.cell(row=r, column=8, value=swap_totals['a_min'])
-    ws.cell(row=r, column=9, value=swap_totals['a_min'] - swap_totals['current'])
-    for i in range(6, 10):
+    ws.cell(row=r, column=9, value=swap_totals['current'])
+    ws.cell(row=r, column=10, value=swap_totals['a'])
+    ws.cell(row=r, column=11, value=swap_totals['a_min'])
+    ws.cell(row=r, column=12, value=swap_totals['a_min'] - swap_totals['current'])
+    for i in range(9, 13):
         c = ws.cell(row=r, column=i)
         style_dollar(c)
         c.font = Font(bold=True)
@@ -802,7 +806,7 @@ def build_executive_summary(wb):
     # Final read
     ws.cell(row=r, column=1, value='OWNERSHIP READ').font = SECTION_FONT
     ws.cell(row=r, column=1).fill = SECTION_FILL
-    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=9)
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=12)
     r += 1
     reads = [
         f"REAL DATA TODAY: Current pays ${real_totals['current']:,.0f} (broken plan, rewards rewriting). The Bonus Plan WITH MIN pays ${real_totals['a_min']:,.0f} (less, because few agents clear the $45k NB gate today).",
@@ -819,7 +823,8 @@ def build_executive_summary(wb):
         ws.row_dimensions[r].height = 44
         r += 1
 
-    set_col_widths(ws, [12, 22, 7, 7, 7, 11, 13, 14, 13])
+    # Cols: Month, Agent, NB#, NB$, RWR#, RWR$, REN#, REN$, Current, no-min, WITH MIN, vs Cur
+    set_col_widths(ws, [10, 20, 6, 10, 7, 10, 7, 10, 10, 11, 12, 10])
     ws.freeze_panes = 'C6'
 
 
@@ -875,11 +880,11 @@ def build_proposal_a(wb):
     r += 1
     rwr_rows = [
         ('Below T1', 'Under $45,000', '$0', 'Below T1. No RWR bonus.'),
-        ('T1', '$45,000', '$125', 'Entry. Half of NB T1.'),
-        ('T2', '$55,000', '$187.50', 'Half of NB T2.'),
-        ('T3', '$70,000', '$262.50', 'Half of NB T3.'),
-        ('T4', '$85,000', '$362.50', 'Half of NB T4.'),
-        ('T5', '$100,000', '$500', 'Top tier. Half of NB top.'),
+        ('T1', '$45,000', '$100', 'Entry.'),
+        ('T2', '$55,000', '$200', '+$100 for the next $10k.'),
+        ('T3', '$70,000', '$275', '+$75 for the next $15k.'),
+        ('T4', '$85,000', '$350', '+$75 for the next $15k.'),
+        ('T5', '$100,000', '$500', 'Top tier. +$150 for the final $15k.'),
         ('Above $100k', '+$25 per $5k extra', '0.5% rate', 'Half of NB above-cap rate.'),
         ('Gate', 'NB premium >= $45k', '', 'No separate RWR minimum - RWR is gated by the NB minimum. Meet NB and the RWR ladder unlocks.'),
     ]
@@ -902,11 +907,11 @@ def build_proposal_a(wb):
     r += 1
     ren_rows = [
         ('Below T1', 'Under $25,000', '$0', 'Below T1. No REN bonus.'),
-        ('T1', '$25,000', '$200', 'Entry - low bar to acknowledge renewals are smaller books today. Pays ~0.80 of NB T1.'),
-        ('T2', '$45,000', '$300', '0.80 of NB T2.'),
-        ('T3', '$65,000', '$420', '0.80 of NB T3.'),
-        ('T4', '$85,000', '$580', '0.80 of NB T4.'),
-        ('T5', '$100,000', '$800', 'Top tier. 0.80 of NB top.'),
+        ('T1', '$25,000', '$250', 'Entry - low bar to acknowledge renewals are smaller books today.'),
+        ('T2', '$40,000', '$350', '+$100 for the next $15k.'),
+        ('T3', '$65,000', '$450', '+$100 for the next $25k.'),
+        ('T4', '$80,000', '$550', '+$100 for the next $15k.'),
+        ('T5', '$100,000', '$800', 'Top tier. +$250 for the final $20k - biggest jump at the top.'),
         ('Above $100k', '+$40 per $5k extra', '0.8% rate', 'No cap. $150k REN -> $1,200. Rewards growing the renewal book past $100k.'),
         ('Gate', 'Retention rate >= 30%', '', f'Agent must retain at least 30% of their assigned renewal book to earn ANY REN bonus this month.'),
     ]
@@ -1487,7 +1492,7 @@ def build_profitability(wb):
         'A hard cap on every month at a low % (e.g., 15%) would squash the plan so much that it pays the same amount regardless of agent performance - defeating the incentive entirely.',
         'The 40% REVIEW threshold flags outlier months (low collection, high written premium) so ownership can act, without making the everyday bonus arbitrary.',
         'The 90-day CHARGEBACK is the actual profit protection. If a policy cancels in 90 days, the bonus is reversed. That matches carrier commission chargeback exposure exactly.',
-        'The 4-month modeled cost: Current $12,220, New plan $6,905 at 100% FLIP (still cheaper than today AND aligns pay with the right behavior).',
+        'The 4-month modeled cost: Current $12,220, New plan $7,975 at 100% FLIP (still cheaper than today AND aligns pay with the right behavior).',
     ]
     for t in why:
         c = ws.cell(row=r, column=1, value=t)
@@ -1716,8 +1721,8 @@ def build_manual_tracker(wb):
     r += 1
     formula_rows = [
         ['NB tiered bonus', 'Monthly NB written premium: T1 $45k=$250 | T2 $55k=$375 | T3 $70k=$525 | T4 $85k=$725 | T5 $100k=$1,000. Above $100k: +$50 per $5k.', '', '', ''],
-        ['RWR tiered bonus', 'Same breakpoints as NB, pays HALF: T1=$125 | T2=$187.50 | T3=$262.50 | T4=$362.50 | T5=$500. Above $100k: +$25 per $5k.', '', '', ''],
-        ['REN tiered bonus', 'Own breakpoints: T1 $25k=$200 | T2 $45k=$300 | T3 $65k=$420 | T4 $85k=$580 | T5 $100k=$800. Above $100k: +$40 per $5k.', '', '', ''],
+        ['RWR tiered bonus', 'Same breakpoints as NB, pays ~half: T1=$100 | T2=$200 | T3=$275 | T4=$350 | T5=$500. Above $100k: +$25 per $5k.', '', '', ''],
+        ['REN tiered bonus', 'Own breakpoints: T1 $25k=$250 | T2 $40k=$350 | T3 $65k=$450 | T4 $80k=$550 | T5 $100k=$800. Above $100k: +$40 per $5k.', '', '', ''],
         ['Minimums (monthly)', 'NB written premium >= $45,000 | REN retention rate >= 30% of book | RWR follows NB gate (no separate RWR floor)', '', '', ''],
         ['Chargeback', '3 months (90 days) - bonus reversed if policy cancels/rewrites within 90 days', '', '', ''],
     ]
@@ -2483,9 +2488,9 @@ def build_assumptions(wb):
         ('Chargeback period (PRIMARY PROTECTION)', '90 days', 'Cancel/rewrite reversal window. The actual profit shield.', 'Matches carrier commission chargeback exposure.'),
         ('NB tier ladder', '$250 / $375 / $525 / $725 / $1,000', 'Monthly NB written premium tiers at $45k / $55k / $70k / $85k / $100k.', 'Mirrors today\'s 30/38/50 count-tier idea but premium-based. Bigger jumps at the top tiers.'),
         ('NB above $100k', '+$50 per $5k extra', '1% linear above the top tier. No cap.', '$110k -> $1,100. $150k -> $1,500.'),
-        ('RWR tier ladder', '$125 / $187.50 / $262.50 / $362.50 / $500', 'Same breakpoints as NB ($45k-$100k), pays HALF of NB.', 'Rewrites pay half of new business.'),
+        ('RWR tier ladder', '$100 / $200 / $275 / $350 / $500', 'Same breakpoints as NB ($45k-$100k), pays roughly half of NB at each tier.', 'Rewrites pay about half of new business.'),
         ('RWR above $100k', '+$25 per $5k extra', '0.5% linear above the top tier.', '$110k RWR -> $550.'),
-        ('REN tier ladder', '$200 / $300 / $420 / $580 / $800', 'Own breakpoints at $25k / $45k / $65k / $85k / $100k REN written premium.', 'Pays roughly 0.80x of NB - the midpoint between NB and RWR with a slight boost.'),
+        ('REN tier ladder', '$250 / $350 / $450 / $550 / $800', 'Own breakpoints at $25k / $40k / $65k / $80k / $100k REN written premium.', 'Pays roughly the intersection between NB and RWR, with a slight boost.'),
         ('REN above $100k', '+$40 per $5k extra', '0.8% linear above the top tier.', '$150k REN -> $1,200. Rewards growing the renewal book past $100k.'),
         ('NB minimum', f'${NB_MIN_PREMIUM:,}/mo NB written premium', 'Equal to NB T1 entry. No bonus below this.', 'Same threshold gates RWR.'),
         ('REN minimum', f'{REN_MIN_RETENTION*100:.0f}% retention rate', 'Agent must retain at least 30% of their assigned renewal book.', 'Computed from agency renewal history.'),
