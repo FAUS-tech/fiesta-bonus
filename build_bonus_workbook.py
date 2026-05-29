@@ -235,28 +235,6 @@ REN_TIERS = [
 ]
 REN_OVERAGE_PER_5K = 40   # +$40 per $5k above $100k
 
-# Retention rate KICKERS - added on top of the REN tier bonus.
-# Only paid if the agent earned a REN tier (premium >= $25k T1 entry).
-# 30% is the qualifying gate (no kicker, just unlocks tier bonus).
-# Each band REPLACES the prior (not stacking).
-RETENTION_KICKERS = [
-    (1.00, 1000),  # 100% retention -> +$1,000
-    (0.75,  500),  # 75-99% -> +$500
-    (0.50,  250),  # 50-74% -> +$250
-    # 30-49% qualifies for tier but no kicker
-]
-
-
-def retention_kicker(retention_rate, ren_tier_bonus_amount):
-    """Return the retention-rate kicker added to the REN tier bonus.
-    Only paid when the agent earned a REN tier (premium >= $25k)."""
-    if ren_tier_bonus_amount <= 0:
-        return 0
-    for threshold, amount in RETENTION_KICKERS:
-        if retention_rate >= threshold:
-            return amount
-    return 0
-
 
 def tier_bonus(premium, tiers, overage_per_5k):
     """Find the bonus for a given monthly premium under a tier ladder.
@@ -317,9 +295,7 @@ def calc_proposal_a(nb, rwr, ren, retention_rate=RETENTION_RATE_DEFAULT):
 
     nb_bonus, nb_tier_num, nb_tier_label = nb_tier_bonus(nb_p)
     rwr_bonus, rwr_tier_num, rwr_tier_label = rwr_tier_bonus(rwr_p)
-    ren_tier_amount, ren_tier_num, ren_tier_label = ren_tier_bonus(ren_p)
-    ren_kicker = retention_kicker(retention_rate, ren_tier_amount)
-    ren_bonus = ren_tier_amount + ren_kicker
+    ren_bonus, ren_tier_num, ren_tier_label = ren_tier_bonus(ren_p)
 
     nb_target = nb_bonus
     rwr_target = rwr_bonus
@@ -595,13 +571,13 @@ def build_readme(wb):
         ('===== TL;DR =====', ''),
         ('The problem', "Today's bonus rewards REWRITING customers (counts NB+RWR policies). It pays $0 for renewals - so there's no incentive to keep the book."),
         ('The new plan', 'Same shape as today (5 tiers) but driven by monthly WRITTEN PREMIUM, not policy count. Each line - NB, RWR, REN - has its own tier ladder.'),
-        ('Bottom line (4-mo, 6 agents)', 'TODAY: $12,220. NEW PLAN: $1,675 if behavior stays the same, $8,375 with 50% renewal shift, $18,475 if all rewrites had been renewals. New plan pays LESS for the wrong behavior and significantly MORE for the right behavior - including the retention kicker that rewards agents who actually retain the book.'),
+        ('Bottom line (4-mo, 6 agents)', 'TODAY: $12,220. NEW PLAN: $1,675 if behavior stays the same, $3,875 with 50% renewal shift, $7,975 if all rewrites had been renewals. New plan costs LESS while paying for the right behavior.'),
         ('Recommendation', f'Adopt the new plan with the ${NB_MIN_PREMIUM:,} NB minimum + {REN_MIN_RETENTION*100:.0f}% retention minimum + 90-day chargeback. Pilot 90 days side-by-side, pay the higher of the two.'),
         ('', ''),
         ('===== THE PLAN AT A GLANCE =====', ''),
         ('NB', 'T1 $45k=$250 | T2 $55k=$375 | T3 $70k=$525 | T4 $85k=$725 | T5 $100k=$1,000. Above $100k: +$50 per $5k.'),
         ('RWR', 'T1 $45k=$100 | T2 $55k=$200 | T3 $70k=$275 | T4 $85k=$350 | T5 $100k=$500. Above $100k: +$25 per $5k.'),
-        ('REN', 'T1 $25k=$250 | T2 $40k=$350 | T3 $65k=$450 | T4 $80k=$550 | T5 $100k=$800. Above $100k: +$40 per $5k. PLUS retention kicker: 50-74% retained = +$250, 75-99% = +$500, 100% = +$1,000.'),
+        ('REN', 'T1 $25k=$250 | T2 $40k=$350 | T3 $65k=$450 | T4 $80k=$550 | T5 $100k=$800. Above $100k: +$40 per $5k. Gate: 30% retention rate.'),
         ('Minimum requirements', f'NB premium >= ${NB_MIN_PREMIUM:,} | Retention rate >= {REN_MIN_RETENTION*100:.0f}% | RWR follows NB gate.'),
         ('90-day chargeback', '100% of paid bonus is reversed if the policy cancels or rewrites within 90 days of effective date.'),
         ('Manual tracker', 'Required for every policy. No tracker entry = no bonus on that policy.'),
@@ -924,10 +900,6 @@ def build_proposal_a(wb):
         ('T5', '$100,000', '$800', 'Top tier - biggest jump.'),
         ('Above $100k', '+$5k extra', '+$40', '0.8% rate. No cap.'),
         ('Gate', 'Retention rate >= 30%', '', 'Below 30% = no REN bonus this month.'),
-        ('Kicker 30-49%', '+$0', '', 'Qualifies for tier bonus, no kicker.'),
-        ('Kicker 50-74%', '+$250', '', 'Solid retention - on top of the tier bonus.'),
-        ('Kicker 75-99%', '+$500', '', 'Strong retention - bigger kicker.'),
-        ('Kicker 100%', '+$1,000', '', 'Perfect retention - top kicker.'),
     ]
     for row in ren_rows:
         for i, v in enumerate(row, 1):
@@ -1506,7 +1478,7 @@ def build_profitability(wb):
         'A hard cap on every month at a low % (e.g., 15%) would squash the plan so much that it pays the same amount regardless of agent performance - defeating the incentive entirely.',
         'The 40% REVIEW threshold flags outlier months (low collection, high written premium) so ownership can act, without making the everyday bonus arbitrary.',
         'The 90-day CHARGEBACK is the actual profit protection. If a policy cancels in 90 days, the bonus is reversed. That matches carrier commission chargeback exposure exactly.',
-        'The 4-month modeled cost: Current $12,220, New plan $18,475 at 100% FLIP (more expensive than today but only triggered by the right behavior; REAL behavior pays only $1,675).',
+        'The 4-month modeled cost: Current $12,220, New plan $7,975 at 100% FLIP (still cheaper than today AND aligns pay with the right behavior).',
     ]
     for t in why:
         c = ws.cell(row=r, column=1, value=t)
@@ -1688,23 +1660,16 @@ def _build_one_examples_table(ws, r, scenario_label, scenario_fn, line_type,
     line_type: 'NB' | 'RWR' | 'REN'
     scenario_fn: callable that takes the original agent-month dict and
                  returns a possibly-modified one (for SWAP / FLIP).
-    For 'REN' the table adds a Retention Kicker column - assumed 75%
-    retention rate = +$500 kicker on every eligible row.
     """
-    is_ren = (line_type == 'REN')
-    last_col = 7 if is_ren else 6
+    last_col = 6
     ws.cell(row=r, column=1, value=scenario_label).font = SECTION_FONT
     ws.cell(row=r, column=1).fill = SECTION_FILL
     ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=last_col)
     ws.row_dimensions[r].height = 22
     r += 1
 
-    if is_ren:
-        headers = ['Agent', 'Month', 'REN Premium', 'Progress Bar',
-                   'Tier', 'Retention Kicker (75% assumed)', 'Total Bonus $']
-    else:
-        headers = ['Agent', 'Month', f'{line_type} Premium', 'Progress Bar',
-                   'Tier', 'Total Bonus $']
+    headers = ['Agent', 'Month', f'{line_type} Premium', 'Progress Bar',
+               'Tier', 'Total Bonus $']
     for i, h in enumerate(headers, 1):
         style_header(ws.cell(row=r, column=i, value=h))
     ws.row_dimensions[r].height = 26
@@ -1715,31 +1680,23 @@ def _build_one_examples_table(ws, r, scenario_label, scenario_fn, line_type,
         for month in MONTHS:
             d = scenario_fn(AGENTS[agent][month])
             premium = d[line_type][1]
-            tier_amt, tier_num, tier_label = tier_bonus_fn(premium)
-            kicker_amt = retention_kicker(RETENTION_RATE_DEFAULT, tier_amt) if is_ren else 0
-            bonus_amt = tier_amt + kicker_amt
-            rows.append((agent, month, premium, bonus_amt, tier_num, tier_label, tier_amt, kicker_amt))
+            bonus_amt, tier_num, tier_label = tier_bonus_fn(premium)
+            rows.append((agent, month, premium, bonus_amt, tier_num, tier_label))
 
     # Sort by premium descending so top earners surface first (matches the
     # screenshot from the boss).
     rows.sort(key=lambda x: -x[2])
 
     data_start_row = r
-    for agent, month, premium, bonus_amt, tier_num, tier_label, tier_amt, kicker_amt in rows:
+    for agent, month, premium, bonus_amt, tier_num, tier_label in rows:
         ws.cell(row=r, column=1, value=agent)
         ws.cell(row=r, column=2, value=month)
         c_prem = ws.cell(row=r, column=3, value=premium)
         c_prog = ws.cell(row=r, column=4, value=premium)
         c_tier = ws.cell(row=r, column=5)
-        # Show TIER bonus alone in this cell (so the next column = kicker, next = total)
-        if is_ren:
-            c_kicker = ws.cell(row=r, column=6, value=kicker_amt)
-            c_bonus = ws.cell(row=r, column=7, value=bonus_amt)
-        else:
-            c_kicker = None
-            c_bonus = ws.cell(row=r, column=6, value=bonus_amt)
+        c_bonus = ws.cell(row=r, column=6, value=bonus_amt)
 
-        tier_fill, tier_text = _tier_fill_and_label(tier_num, tier_label, tier_amt, line_type)
+        tier_fill, tier_text = _tier_fill_and_label(tier_num, tier_label, bonus_amt, line_type)
         c_tier.value = tier_text
         c_tier.fill = tier_fill
         c_tier.font = Font(bold=True, size=11, color='FFFFFF' if tier_num == 0 else '000000')
@@ -1751,14 +1708,6 @@ def _build_one_examples_table(ws, r, scenario_label, scenario_fn, line_type,
         style_dollar(c_prem)
         style_dollar(c_prog)
         c_prog.font = Font(color='FFFFFF', size=9)
-        if c_kicker is not None:
-            style_dollar(c_kicker)
-            if kicker_amt > 0:
-                c_kicker.font = Font(bold=True, color='006100')
-                c_kicker.fill = PatternFill('solid', fgColor='E2EFDA')
-            else:
-                c_kicker.font = Font(color='9C9C9C')
-            c_kicker.alignment = Alignment(horizontal='center', vertical='center')
         style_dollar(c_bonus)
         c_bonus.font = Font(bold=True, size=12, color='006100' if bonus_amt > 0 else '9C0006')
 
@@ -1790,7 +1739,7 @@ def build_bonus_examples(wb):
         ('RWR Bonus Examples', 'RWR', rwr_tier_bonus,
          'RWR tiers: T1 $45k=$100 | T2 $55k=$200 | T3 $70k=$275 | T4 $85k=$350 | T5 $100k=$500 | Above $100k: +$25 per $5k. RWR gated by NB minimum.'),
         ('REN Bonus Examples', 'REN', ren_tier_bonus,
-         'REN tiers: T1 $25k=$250 | T2 $40k=$350 | T3 $65k=$450 | T4 $80k=$550 | T5 $100k=$800 (above $100k: +$40/$5k). Retention KICKER on top: 30-49%=$0, 50-74%=+$250, 75-99%=+$500, 100%=+$1,000. Model assumes 75% retention -> +$500 kicker per eligible row.'),
+         'REN tiers: T1 $25k=$250 | T2 $40k=$350 | T3 $65k=$450 | T4 $80k=$550 | T5 $100k=$800 | Above $100k: +$40 per $5k. REN gated by 30% retention rate.'),
     ]
     scenarios = [
         ('SCENARIO 1: REAL DATA (Jan-Apr 2026)',          lambda d: d),
@@ -1813,11 +1762,7 @@ def build_bonus_examples(wb):
             r = _build_one_examples_table(ws, r, scenario_label, scenario_fn,
                                           line_type, tier_fn, ladder_text)
 
-        if line_type == 'REN':
-            # Agent | Month | Premium | Progress | Tier | Kicker | Total
-            set_col_widths(ws, [22, 11, 13, 22, 36, 14, 14])
-        else:
-            set_col_widths(ws, [24, 12, 14, 24, 42, 14])
+        set_col_widths(ws, [24, 12, 14, 24, 42, 14])
         ws.freeze_panes = 'A4'
 
 
@@ -1850,9 +1795,7 @@ def _build_one_combined_table(ws, r, scenario_label, scenario_fn):
             ren_p = d['REN'][1]
             nb_b, _, _ = nb_tier_bonus(nb_p)
             rwr_b, _, _ = rwr_tier_bonus(rwr_p)
-            ren_tier_amt, _, _ = ren_tier_bonus(ren_p)
-            ren_kick = retention_kicker(RETENTION_RATE_DEFAULT, ren_tier_amt)
-            ren_b = ren_tier_amt + ren_kick
+            ren_b, _, _ = ren_tier_bonus(ren_p)
             # Apply the same gates the plan uses
             nb_qual = nb_p >= NB_MIN_PREMIUM
             rwr_qual = nb_qual  # RWR follows NB
@@ -1935,8 +1878,8 @@ def build_combined_examples(wb):
     ws['A1'].font = TITLE_FONT
     ws.merge_cells('A1:J1')
     ws['A2'] = ("Each row = one agent-month. Shows the NB, RWR, and REN bonus side by side and the TOTAL "
-                "BONUS for the month. REN bonus already includes the assumed +$500 retention kicker (75% rate). "
-                "Sorted by total bonus descending. Bonus cells that paid are shaded green; red total = nothing paid (NB minimum not met).")
+                "BONUS for the month. Sorted by total bonus descending. Bonus cells that paid are shaded green; "
+                "red total = nothing paid (NB minimum not met).")
     ws['A2'].font = Font(italic=True, size=10, color='666666')
     ws.merge_cells('A2:J2')
 
@@ -1989,9 +1932,7 @@ def _build_one_comparison_table(ws, r, scenario_label, scenario_fn):
             cur = current_bonus(nb_c, rwr_c)
             nb_b, _, _ = nb_tier_bonus(nb_p)
             rwr_b, _, _ = rwr_tier_bonus(rwr_p)
-            ren_tier_amt, _, _ = ren_tier_bonus(ren_p)
-            ren_kick = retention_kicker(RETENTION_RATE_DEFAULT, ren_tier_amt)
-            ren_b = ren_tier_amt + ren_kick
+            ren_b, _, _ = ren_tier_bonus(ren_p)
             nb_qual = nb_p >= NB_MIN_PREMIUM
             nb_paid = nb_b if nb_qual else 0
             rwr_paid = rwr_b if nb_qual else 0
@@ -2084,7 +2025,7 @@ def build_current_vs_new_comparison(wb):
     ws['A1'].font = TITLE_FONT
     ws.merge_cells('A1:J1')
     ws['A2'] = ("CURRENT = today's plan: count NB+RWR policies, 30/38/50 tier -> $250/$350/$450 + $10/policy above 50. "
-                "NEW = the new tier-based plan (NB + RWR + REN combined, REN bonus already includes the assumed +$500 retention kicker at 75%). "
+                "NEW = the new tier-based plan (NB + RWR + REN combined). "
                 "Sorted by DELTA descending: biggest winners on top, biggest losses at the bottom.")
     ws['A2'].font = Font(italic=True, size=10, color='666666')
     ws.merge_cells('A2:J2')
@@ -2187,7 +2128,6 @@ def build_manual_tracker(wb):
         ['NB tiered bonus', 'Monthly NB written premium: T1 $45k=$250 | T2 $55k=$375 | T3 $70k=$525 | T4 $85k=$725 | T5 $100k=$1,000. Above $100k: +$50 per $5k.', '', '', ''],
         ['RWR tiered bonus', 'Same breakpoints as NB, pays ~half: T1=$100 | T2=$200 | T3=$275 | T4=$350 | T5=$500. Above $100k: +$25 per $5k.', '', '', ''],
         ['REN tiered bonus', 'Own breakpoints: T1 $25k=$250 | T2 $40k=$350 | T3 $65k=$450 | T4 $80k=$550 | T5 $100k=$800. Above $100k: +$40 per $5k.', '', '', ''],
-        ['REN retention kicker', 'On top of REN tier bonus. 30-49% = $0 | 50-74% = +$250 | 75-99% = +$500 | 100% = +$1,000.', '', '', ''],
         ['Minimums (monthly)', 'NB written premium >= $45,000 | REN retention rate >= 30% of book | RWR follows NB gate (no separate RWR floor)', '', '', ''],
         ['Chargeback', '3 months (90 days) - bonus reversed if policy cancels/rewrites within 90 days', '', '', ''],
     ]
@@ -2957,7 +2897,6 @@ def build_assumptions(wb):
         ('RWR above $100k', '+$25 per $5k extra', '0.5% linear above the top tier.', '$110k RWR -> $550.'),
         ('REN tier ladder', '$250 / $350 / $450 / $550 / $800', 'Own breakpoints at $25k / $40k / $65k / $80k / $100k REN written premium.', 'Pays roughly the intersection between NB and RWR, with a slight boost.'),
         ('REN above $100k', '+$40 per $5k extra', '0.8% linear above the top tier.', '$150k REN -> $1,200. Rewards growing the renewal book past $100k.'),
-        ('REN retention kicker', '$0 / +$250 / +$500 / +$1,000', '30-49% / 50-74% / 75-99% / 100% retention rate respectively.', 'Added on top of the REN tier bonus. Model assumes 75% retention -> +$500 kicker.'),
         ('NB minimum', f'${NB_MIN_PREMIUM:,}/mo NB written premium', 'Equal to NB T1 entry. No bonus below this.', 'Same threshold gates RWR.'),
         ('REN minimum', f'{REN_MIN_RETENTION*100:.0f}% retention rate', 'Agent must retain at least 30% of their assigned renewal book.', 'Computed from agency renewal history.'),
         ('RWR gate', 'NB minimum met', 'RWR pays only when NB premium >= $45k. No separate RWR floor.', 'Encourages NB writing - RWR alone never earns bonus.'),

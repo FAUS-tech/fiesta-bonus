@@ -13,9 +13,8 @@ from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 from build_bonus_workbook import (
     AGENTS, MONTHS, AGENT_NAMES, NB_MIN_PREMIUM, REN_MIN_RETENTION,
     BLENDED_COMM, ROYALTY, OVERHEAD, CAP_STANDARD, AGENT_SALARY, RETENTION_POOL_RATE,
-    RETENTION_RATE_DEFAULT,
     calc_proposal_a, current_bonus, swap_rwr_to_ren, full_flip,
-    nb_tier_bonus, rwr_tier_bonus, ren_tier_bonus, retention_kicker,
+    nb_tier_bonus, rwr_tier_bonus, ren_tier_bonus,
 )
 
 # COLOR PALETTE
@@ -372,21 +371,12 @@ def slide_plan_a_details_new(prs, idx, total):
         ["Monthly REN premium", "$25,000", "$40,000", "$65,000", "$80,000", "$100,000", "+$5k of premium"],
         ["REN pays", "$250", "$350", "$450", "$550", "$800", "+$40 (0.8%)"],
     ]
-    add_table(s, Inches(0.4), Inches(4.45), Inches(12.7), Inches(1.05), ren_data,
+    add_table(s, Inches(0.4), Inches(4.45), Inches(12.7), Inches(1.4), ren_data,
               header_fill=GOLD, col_widths=[Inches(2.6), Inches(1.5), Inches(1.5), Inches(1.5), Inches(1.5), Inches(1.6), Inches(2.5)],
-              font_size=11, row_height_in=0.35, first_col_bold=True)
-
-    # REN retention kicker
-    kicker_data = [
-        ["Retention rate", "30-49%", "50-74%", "75-99%", "100%"],
-        ["Kicker on top of tier", "$0", "+$250", "+$500", "+$1,000"],
-    ]
-    add_table(s, Inches(0.4), Inches(5.55), Inches(12.7), Inches(0.7), kicker_data,
-              header_fill=GOLD, col_widths=[Inches(3.5), Inches(2.3), Inches(2.3), Inches(2.3), Inches(2.3)],
-              font_size=11, row_height_in=0.32, first_col_bold=True)
+              font_size=11, row_height_in=0.40, first_col_bold=True)
 
     # Section 4: Rules on top
-    add_text(s, Inches(0.4), Inches(6.35), Inches(12.7), Inches(0.3),
+    add_text(s, Inches(0.4), Inches(6.05), Inches(12.7), Inches(0.3),
              "4. RULES ON TOP", font_size=13, bold=True, color=NAVY)
     rules_data = [
         ["Rule", "Value", "What it does"],
@@ -394,7 +384,7 @@ def slide_plan_a_details_new(prs, idx, total):
         [f"REN monthly minimum", f"{REN_MIN_RETENTION*100:.0f}% retention rate of book", f"Retain < 30% -> REN pay = $0"],
         ["Chargeback", "3 months (90 days)", "100% bonus reversed if policy cancels/rewrites within 90 days"],
     ]
-    add_table(s, Inches(0.4), Inches(6.70), Inches(12.7), Inches(0.85), rules_data,
+    add_table(s, Inches(0.4), Inches(6.40), Inches(12.7), Inches(1.10), rules_data,
               header_fill=NAVY, col_widths=[Inches(2.8), Inches(3.4), Inches(6.5)],
               font_size=11, row_height_in=0.26)
 
@@ -550,7 +540,7 @@ def slide_minimums(prs, idx, total):
         f"At 25% collected (today's typical): ${NB_MIN_PREMIUM*0.25:,.0f} collected x 11% x (1-21%) = ~${NB_MIN_PREMIUM*0.25*0.11*(1-ROYALTY):,.0f} retained ({NB_MIN_PREMIUM*0.25*0.11*(1-ROYALTY)/AGENT_SALARY*100:.0f}% of salary).",
         f"At 50% collected (typical push target): ~${NB_MIN_PREMIUM*0.50*0.11*(1-ROYALTY):,.0f} retained ({NB_MIN_PREMIUM*0.50*0.11*(1-ROYALTY)/AGENT_SALARY*100:.0f}% of salary).",
         f"At 75% collected (top performer): ~${NB_MIN_PREMIUM*0.75*0.11*(1-ROYALTY):,.0f} retained ({NB_MIN_PREMIUM*0.75*0.11*(1-ROYALTY)/AGENT_SALARY*100:.0f}% of salary) - covers salary AND generates profit.",
-        "The MINIMUM is the floor. The COLLECTED KICKER is the lever to cover salary and earn bonus on top.",
+        "The MINIMUM is the floor: hit it and the agent's commission already covers salary. The tier bonus is the reward on top.",
     ]
     add_bullets(s, Inches(0.7), Inches(5.3), Inches(12.0), Inches(1.6), sal_items, font_size=11)
 
@@ -922,7 +912,7 @@ def slide_current_vs_new(prs, idx, total):
     parts of the bonus math."""
     s = add_slide(prs)
     header_strip(s, "Current vs New Plan - Per Agent-Month Comparison",
-                 "CURRENT = count-tier on NB+RWR. NEW = NB tier + RWR tier + REN tier + retention kicker. Sorted by delta. # = policy count, $ = written premium.")
+                 "CURRENT = count-tier on NB+RWR. NEW = NB tier + RWR tier + REN tier. Sorted by delta. # = policy count, $ = written premium.")
     footer(s, idx, total)
 
     scenarios = [
@@ -943,9 +933,7 @@ def slide_current_vs_new(prs, idx, total):
                 cur = current_bonus(nb_c, rwr_c)
                 nb_b, _, _ = nb_tier_bonus(nb_p)
                 rwr_b, _, _ = rwr_tier_bonus(rwr_p)
-                ren_tier_amt, _, _ = ren_tier_bonus(ren_p)
-                ren_kick = retention_kicker(RETENTION_RATE_DEFAULT, ren_tier_amt)
-                ren_b = ren_tier_amt + ren_kick
+                ren_b, _, _ = ren_tier_bonus(ren_p)
                 nb_qual = nb_p >= NB_MIN_PREMIUM
                 new_total = (nb_b if nb_qual else 0) + (rwr_b if nb_qual else 0) + ren_b
                 delta = new_total - cur
@@ -1070,7 +1058,7 @@ def slide_recommendation(prs, idx, total):
         "Same structure as today (count tiers -> $X) but driven by PREMIUM written, not policy count.",
         "Pays for RENEWALS (today's plan pays $0) - REN gets its own tier ladder starting at $25k.",
         "Bigger jumps at the top tiers - $1,000 NB at $100k premium, with linear 1% upside above.",
-        "Pays more under FLIP ($18,475 vs today's $12,220) but only when the agency keeps the book - REAL behavior pays only $1,675. The pay scales with the retention upside.",
+        "Costs LESS at full target than today's count-tier plan - new plan FLIP $7,975 vs current $12,220.",
     ]
     add_bullets(s, Inches(0.7), Inches(3.5), Inches(12.0), Inches(2.0), items, font_size=14)
 
@@ -1151,8 +1139,7 @@ def build():
     # that mirror the Excel "Bonus Examples" sheets.
     nb_ladder = "T1 $45k=$250 | T2 $55k=$375 | T3 $70k=$525 | T4 $85k=$725 | T5 $100k=$1,000 | Above $100k: +$50 per $5k. Min req $45k."
     rwr_ladder = "T1 $45k=$100 | T2 $55k=$200 | T3 $70k=$275 | T4 $85k=$350 | T5 $100k=$500 | Above $100k: +$25 per $5k. Gated by NB min."
-    ren_ladder = ("T1 $25k=$250 | T2 $40k=$350 | T3 $65k=$450 | T4 $80k=$550 | T5 $100k=$800 | Above $100k: +$40 per $5k. "
-                  "Retention KICKER on top: 50-74%=+$250 | 75-99%=+$500 | 100%=+$1,000. Min 30% retention rate.")
+    ren_ladder = "T1 $25k=$250 | T2 $40k=$350 | T3 $65k=$450 | T4 $80k=$550 | T5 $100k=$800 | Above $100k: +$40 per $5k. Min 30% retention rate."
 
     builders = [
         lambda t: slide_cover(prs),
